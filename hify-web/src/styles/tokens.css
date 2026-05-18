@@ -1,0 +1,119 @@
+/* ================================================================
+   Hify Design Tokens — Dark Tech
+   深色科技风 | 参考 Vercel / Linear / Railway
+   ================================================================ */
+
+:root {
+  /* ═══════ 品牌色 ═══════ */
+  --hify-primary:          #7C6FF0;  /* 蓝紫主色 */
+  --hify-primary-light:    #A99FF8;  /* 浅 */
+  --hify-primary-dark:     #5E4FD8;  /* 深 */
+  --hify-accent:           #00E5D9;  /* 青色点缀 */
+  --hify-accent-light:     #5FF5EC;  /* 青浅 */
+
+  /* ═══════ 功能色 ═══════ */
+  --hify-success:  #34D399;
+  --hify-warning:  #FBBF24;
+  --hify-danger:   #F87171;
+  --hify-info:     #60A5FA;
+
+  /* ═══════ 背景色阶 (深色) ═══════ */
+  --hify-bg-base:          #090A0F;  /* 最底 */
+  --hify-bg-page:          #0D0E14;  /* 页面背景 */
+  --hify-bg-sidebar:       #07080C;  /* 侧边栏（比页底更深） */
+  --hify-bg-container:     #13141C;  /* 卡片/表格 */
+  --hify-bg-elevated:      #1A1B24;  /* 浮层/弹窗 */
+  --hify-bg-hover:         #1E1F2A;  /* 悬停 */
+  --hify-bg-active:        #252637;  /* 选中/按下 */
+  --hify-bg-input:         #0F1018;  /* 输入框底 */
+  --hify-bg-tooltip:       #252531;  /* 提示底 */
+
+  /* ═══════ 文字色阶 (深底浅字) ═══════ */
+  --hify-text-primary:     #EDEEF2;  /* 标题 */
+  --hify-text-regular:     #C2C3CE;  /* 正文 */
+  --hify-text-secondary:   #858694;  /* 辅助 */
+  --hify-text-placeholder: #555665;  /* 占位/禁用 */
+  --hify-text-inverse:     #EDEEF2;  /* 深底反白 */
+
+  /* ═══════ 边框 ═══════ */
+  --hify-border:           #1F2030;  /* 常规边线 */
+  --hify-border-light:     #282A38;  /* 浅边线 */
+  --hify-border-hover:     #3A3C4E;  /* 悬停边线 */
+
+  /* ═══════ 圆角 ═══════ */
+  --hify-radius-sm:    4px;
+  --hify-radius-base:  6px;
+  --hify-radius-lg:    10px;
+  --hify-radius-xl:    16px;
+
+  /* ═══════ 阴影 (深色发光感) ═══════ */
+  --hify-shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.40);
+  --hify-shadow-base:  0 1px 3px rgba(0, 0, 0, 0.50);
+  --hify-shadow-md:    0 4px 16px rgba(0, 0, 0, 0.50);
+  --hify-shadow-lg:    0 12px 40px rgba(0, 0, 0, 0.60);
+  --hify-shadow-glow:  0 0 20px rgba(124, 111, 240, 0.15);
+
+  /* ═══════ 过渡 ═══════ */
+  --hify-transition-fast:   120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --hify-transition-base:   200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --hify-transition-slow:   300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ═══════ 间距 ═══════ */
+  --hify-spacing-xs:   4px;
+  --hify-spacing-sm:   8px;
+  --hify-spacing-base: 16px;
+  --hify-spacing-lg:   24px;
+  --hify-spacing-xl:   32px;
+
+  /* ═══════ 字体 ═══════ */
+  --hify-font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                       "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --hify-font-size-xs:    12px;
+  --hify-font-size-sm:    13px;
+  --hify-font-size-base:  14px;
+  --hify-font-size-lg:    16px;
+  --hify-font-size-xl:    20px;
+  --hify-font-size-xxl:   24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Element Plus 深色变量映射
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  /* 品牌色 */
+  --el-color-primary:             var(--hify-primary);
+  --el-color-primary-light-3:     var(--hify-primary-light);
+  --el-color-primary-dark-2:      var(--hify-primary-dark);
+  --el-color-success:             var(--hify-success);
+  --el-color-warning:             var(--hify-warning);
+  --el-color-danger:              var(--hify-danger);
+  --el-color-info:                var(--hify-info);
+
+  /* 背景 */
+  --el-bg-color:                  var(--hify-bg-container);
+  --el-bg-color-page:             var(--hify-bg-page);
+  --el-bg-color-overlay:          var(--hify-bg-elevated);
+  --el-fill-color-blank:          var(--hify-bg-container);
+  --el-fill-color:                var(--hify-bg-hover);
+  --el-fill-color-light:          var(--hify-bg-hover);
+  --el-fill-color-lighter:        var(--hify-bg-active);
+
+  /* 文字 */
+  --el-text-color-primary:        var(--hify-text-primary);
+  --el-text-color-regular:        var(--hify-text-regular);
+  --el-text-color-secondary:      var(--hify-text-secondary);
+  --el-text-color-placeholder:    var(--hify-text-placeholder);
+
+  /* 边框 */
+  --el-border-color:              var(--hify-border);
+  --el-border-color-light:        var(--hify-border-light);
+  --el-border-color-lighter:      var(--hify-border-light);
+  --el-border-color-dark:         var(--hify-border-hover);
+
+  /* 圆角 */
+  --el-border-radius-base:        var(--hify-radius-base);
+  --el-border-radius-round:       var(--hify-radius-lg);
+
+  /* 字体 */
+  --el-font-family:               var(--hify-font-family);
+}

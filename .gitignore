@@ -3,3 +3,22 @@
 !CLAUDE.md
 Vibe-Skills/
 
+### Java ###
+target/
+*.class
+*.jar
+*.war
+
+### Node ###
+node_modules/
+dist/
+
+### IDE ###
+.vscode/
+.idea/
+*.iml
+
+### OS ###
+.DS_Store
+Thumbs.db
+
