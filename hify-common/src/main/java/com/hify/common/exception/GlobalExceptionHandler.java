@@ -1,12 +1,14 @@
 package com.hify.common.exception;
 
 import com.hify.common.web.Result;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -29,6 +31,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public Result<?> handleException(Exception e) {
+        log.error("未捕获异常", e);
         ErrorCode ec = ErrorCode.INTERNAL_ERROR;
         return Result.fail(ec.getCode(), ec.getMessage());
     }
