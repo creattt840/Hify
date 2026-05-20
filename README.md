@@ -14,7 +14,7 @@
 | hify-common | ✅ | BaseEntity、Result/PageResult、BizException、MyBatis-Plus 配置 |
 | hify-provider | ✅ | CRUD + 连通性测试 + 健康状态 + 模型配置管理 |
 | hify-agent | ✅ | CRUD + temperature 温度参数 + 跨模块模型绑定 |
-| hify-chat | ⏳ | 对话引擎（SSE 流式响应） |
+| hify-chat | ✅ | 对话引擎（SSE 流式 + 四种 LLM 适配器 + 会话/消息存储） |
 | hify-knowledge | ⏳ | 知识库 RAG（pgvector 向量检索） |
 | hify-workflow | ⏳ | 简版工作流（JSON 配置） |
 | hify-mcp | ⏳ | MCP 工具接入 |
@@ -69,7 +69,7 @@ open http://localhost:5173
 | hify-common | 公共模块（BaseEntity、Result、BizException、MyBatis-Plus 配置） |
 | hify-provider | 模型提供商管理（CRUD + 连通性测试 + 健康状态 + 模型配置） |
 | hify-agent | Agent 管理（CRUD + 系统提示词 + temperature + 模型绑定） |
-| hify-chat | 对话引擎（SSE 流式响应） |
+| hify-chat | 对话引擎（SSE 流式 + OpenAI/Claude/Gemini/Ollama 适配器） |
 | hify-knowledge | 知识库 RAG（pgvector 向量检索） |
 | hify-workflow | 简版工作流（JSON 配置） |
 | hify-mcp | MCP 工具接入 |
@@ -100,5 +100,13 @@ DELETE /api/v1/agents/{id}                  # 删除
 ```
 
 所有接口返回统一格式 `Result<T>`：`{ "code": 200, "message": "success", "data": {...} }`
+
+### Conversation 对话
+
+```
+GET    /api/v1/conversations                    # 会话列表
+GET    /api/v1/conversations/{id}/messages      # 消息历史（时间升序）
+POST   /api/v1/conversations/stream             # 发送消息（SSE 流式响应）
+```
 
 详细文档见 [docs/provider-api.md](docs/provider-api.md)
