@@ -1,64 +1,749 @@
 <template>
-  <div class="page">
-    <h2>对话</h2>
-    <p>多轮对话、历史记录、SSE 流式响应。</p>
-    <el-divider />
-    <el-card class="health-card">
-      <template #header>
-        <span>健康检查</span>
-      </template>
-      <div class="health-result">
-        <el-tag :type="statusTag" effect="dark" size="large">
-          {{ healthText }}
-        </el-tag>
-        <el-progress
-          :percentage="elapsed"
-          :stroke-width="8"
-          :color="progressColor"
-          :class="{ hidden: !elapsed }"
-        />
+  <div class="chat-layout">
+    <!-- ========== 左侧会话列表面板 ========== -->
+    <aside class="chat-sidebar">
+      <!-- 头部 -->
+      <div class="sidebar-top">
+        <div class="sidebar-brand">Hify AI</div>
+        <el-select
+          v-model="selectedAgentId"
+          placeholder="选择 Agent"
+          size="default"
+          class="agent-picker"
+        >
+          <el-option
+            v-for="a in agents"
+            :key="a.id"
+            :label="a.name"
+            :value="a.id"
+          />
+        </el-select>
+        <el-button
+          class="new-chat-btn"
+          @click="newConversation"
+          :disabled="!selectedAgentId"
+        >
+          <span class="plus">+</span> 新对话
+        </el-button>
       </div>
-    </el-card>
+
+      <!-- 会话列表 -->
+      <div class="conv-list">
+        <div
+          v-for="conv in conversations"
+          :key="conv.id"
+          class="conv-item"
+          :class="{ active: conv.id === currentConversationId }"
+          @click="switchConversation(conv.id)"
+        >
+          <div class="conv-icon">💬</div>
+          <div class="conv-body">
+            <div class="conv-title">{{ conv.title || '新对话' }}</div>
+            <div class="conv-meta">
+              <span>{{ conv.messageCount }} 条消息</span>
+              <span>{{ formatTime(conv.updatedAt) }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="conversations.length === 0" class="conv-empty">
+          暂无对话记录
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 右侧聊天主区域 ========== -->
+    <div class="chat-main">
+      <!-- 消息滚动区 -->
+      <div class="messages-area" ref="messagesRef">
+        <div v-if="messages.length === 0 && !isLoading" class="chat-empty">
+          <div class="empty-graphic">✨</div>
+          <div class="empty-title">
+            {{ selectedAgentId ? '开始对话' : '选一个 Agent，开始对话' }}
+          </div>
+          <div class="empty-hint">
+            {{ selectedAgentId ? '在下方输入消息，按 Enter 发送' : '在左侧面板中选择一个 Agent' }}
+          </div>
+        </div>
+
+        <!-- 历史消息 -->
+        <div
+          v-for="msg in messages"
+          :key="msg.id"
+          class="msg-row"
+          :class="msg.role"
+        >
+          <div class="msg-avatar" :class="msg.role">
+            <span v-if="msg.role === 'user'">U</span>
+            <span v-else>AI</span>
+          </div>
+          <div class="msg-body">
+            <div class="msg-label">{{ msg.role === 'user' ? '你' : 'Hify AI' }}</div>
+            <div class="msg-bubble" :class="msg.role">
+              <template v-if="msg.role === 'user'">
+                {{ msg.content }}
+              </template>
+              <div
+                v-else
+                class="markdown-body"
+                v-html="renderMarkdown(msg.content)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 流式 AI 气泡：loading → 内容 → 完成 → 错误，始终同一个 DOM 元素 -->
+        <div v-if="isLoading || streamError" class="msg-row assistant">
+          <div class="msg-avatar assistant"><span>AI</span></div>
+          <div class="msg-body">
+            <div class="msg-label">Hify AI</div>
+            <div class="msg-bubble assistant" :class="{ live: streamingContent && !streamError, error: streamError }">
+              <!-- 等待首 token -->
+              <span v-if="!streamingContent && !streamError" class="loading-dots"><i /><i /><i /></span>
+              <!-- 流式渲染 -->
+              <template v-else-if="streamingContent && !streamError">
+                <div class="markdown-body" v-html="renderMarkdown(streamingContent)" />
+                <span class="typing-cursor" />
+              </template>
+              <!-- 错误 -->
+              <div v-else-if="streamError" class="error-msg">
+                <span class="error-icon">!</span>
+                {{ streamError }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部输入区域 -->
+      <div class="input-area">
+        <div class="input-row">
+          <el-input
+            ref="inputRef"
+            v-model="inputText"
+            type="textarea"
+            :rows="1"
+            :autosize="{ minRows: 1, maxRows: 5 }"
+            placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+            :disabled="isLoading || !selectedAgentId"
+            resize="none"
+            class="msg-input"
+            @keydown.enter.exact="sendMessage"
+          />
+          <el-button
+            type="primary"
+            class="action-btn"
+            :disabled="isLoading || !inputText.trim() || !selectedAgentId"
+            @click="sendMessage"
+          >
+            发送
+          </el-button>
+        </div>
+        <div class="input-hint">
+          Enter 发送 · Shift + Enter 换行
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { get } from '../utils/request'
+import { ref, nextTick, onMounted } from 'vue'
+import { marked } from 'marked'
+import { markedHighlight } from 'marked-highlight'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.min.css'
+import 'github-markdown-css/github-markdown.css'
+import { listConversations, getMessages, sendMessageStream } from '@/api/chat'
+import { getAgentList } from '@/api/agent'
+import type { Conversation, ChatMessage } from '@/types/chat'
+import type { AgentResponse } from '@/types/agent'
 
-const healthText = ref('检测中...')
-const elapsed = ref(0)
-const success = ref(false)
+// ── marked 配置 ──
+marked.use(
+  markedHighlight({
+    langPrefix: 'hljs language-',
+    highlight(code: string, lang: string) {
+      if (lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value
+      }
+      return hljs.highlightAuto(code).value
+    },
+  }),
+)
+marked.setOptions({ breaks: true, gfm: true })
 
-const statusTag = computed(() => (success.value ? 'success' : 'danger'))
-const progressColor = computed(() => (success.value ? '#34D399' : '#F87171'))
+function renderMarkdown(content: string): string {
+  if (!content) return ''
+  return marked.parse(content) as string
+}
 
+// ── 状态 ──
+const agents = ref<AgentResponse[]>([])
+const selectedAgentId = ref<number | null>(null)
+const conversations = ref<Conversation[]>([])
+const currentConversationId = ref<number | null>(null)
+const messages = ref<ChatMessage[]>([])
+const inputText = ref('')
+const streamingContent = ref('')
+const streamError = ref('')
+const isLoading = ref(false)
+
+const messagesRef = ref<HTMLElement | null>(null)
+const inputRef = ref<any>(null)
+
+// ── 初始化 ──
 onMounted(async () => {
-  const start = performance.now()
   try {
-    const text = await get<string>('/health')
-    healthText.value = text ?? '无响应'
-    success.value = true
+    const list = await getAgentList({ page: 1, pageSize: 100 })
+    agents.value = (list as any)?.list || list || []
+    await loadConversations()
   } catch {
-    healthText.value = '连接失败'
+    // ignore
   }
-  elapsed.value = Math.round(performance.now() - start)
 })
+
+async function loadConversations() {
+  try {
+    conversations.value = await listConversations()
+  } catch {
+    conversations.value = []
+  }
+}
+
+// ── 会话操作 ──
+function newConversation() {
+  if (isLoading.value) return
+  currentConversationId.value = null
+  messages.value = []
+  streamingContent.value = ''
+  inputText.value = ''
+  nextTick(() => inputRef.value?.focus())
+}
+
+async function switchConversation(convId: number) {
+  if (isLoading.value) return
+  currentConversationId.value = convId
+  messages.value = []
+  streamingContent.value = ''
+  try {
+    messages.value = await getMessages(convId)
+  } catch {
+    messages.value = []
+  }
+  await nextTick()
+  scrollToBottom()
+}
+
+// ── 发送消息 ──
+async function sendMessage() {
+  const text = inputText.value.trim()
+  if (!text || isLoading.value || !selectedAgentId.value) return
+
+  inputText.value = ''
+  streamError.value = ''
+
+  messages.value.push({ id: Date.now(), role: 'user', content: text })
+  await nextTick()
+  scrollToBottom()
+
+  isLoading.value = true
+  streamingContent.value = ''
+
+  try {
+    const response = await sendMessageStream({
+      agentId: selectedAgentId.value,
+      conversationId: currentConversationId.value ?? undefined,
+      content: text,
+    })
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let currentEvent = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          currentEvent = line.substring(6).trim()
+        } else if (line.startsWith('data:')) {
+          const raw = line.substring(5).trim()
+          if (currentEvent === 'delta' && raw) {
+            streamingContent.value += raw
+            await nextTick()
+            scrollToBottom()
+          } else if (currentEvent === 'done') {
+            try {
+              const done = JSON.parse(raw)
+              if (done.convId) currentConversationId.value = done.convId
+            } catch { /* */ }
+          }
+        }
+      }
+    }
+
+    if (streamingContent.value) {
+      messages.value.push({
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: streamingContent.value,
+      })
+    }
+  } catch (err: any) {
+    streamError.value = err?.message || '网络异常，请重试'
+  } finally {
+    streamingContent.value = ''
+    isLoading.value = false
+    await nextTick()
+    scrollToBottom()
+    await loadConversations()
+  }
+}
+
+// ── 滚动 ──
+function scrollToBottom() {
+  nextTick(() => {
+    const el = messagesRef.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
+}
+
+// ── 时间格式化 ──
+function formatTime(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'
+  if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前'
+  return d.toLocaleDateString('zh-CN')
+}
 </script>
 
 <style scoped>
-.health-card {
-  max-width: 480px;
-  margin-top: var(--hify-spacing-base);
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.chat-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
 }
 
-.health-result {
+/* ═══════════════════════════════════════════════
+   Sidebar (会话列表)
+   ═══════════════════════════════════════════════ */
+.chat-sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: var(--hify-bg-sidebar);
+  border-right: 1px solid var(--hify-border);
   display: flex;
   flex-direction: column;
-  gap: var(--hify-spacing-base);
 }
 
-.hidden {
-  visibility: hidden;
+.sidebar-top {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--hify-border);
+}
+
+.sidebar-brand {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--hify-primary);
+  margin-bottom: 14px;
+  letter-spacing: -0.3px;
+}
+
+.agent-picker {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.new-chat-btn {
+  width: 100%;
+  border-radius: 8px;
+  font-weight: 500;
+  border: 1px dashed var(--hify-border);
+  color: var(--hify-text-secondary);
+  transition: all var(--hify-transition-fast);
+}
+
+.new-chat-btn:not(:disabled):hover {
+  border-color: var(--hify-primary);
+  color: var(--hify-primary);
+  background: rgba(124, 111, 240, 0.04);
+}
+
+.plus {
+  font-size: 16px;
+  margin-right: 2px;
+}
+
+/* 会话列表 */
+.conv-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.conv-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background var(--hify-transition-fast);
+  margin-bottom: 2px;
+}
+
+.conv-item:hover {
+  background: var(--hify-bg-hover);
+}
+
+.conv-item.active {
+  background: var(--hify-primary);
+}
+
+.conv-item.active .conv-icon,
+.conv-item.active .conv-title,
+.conv-item.active .conv-meta {
+  color: #fff;
+}
+
+.conv-icon {
+  font-size: 18px;
+  line-height: 1;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+
+.conv-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.conv-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--hify-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.conv-meta {
+  font-size: 12px;
+  color: var(--hify-text-placeholder);
+  display: flex;
+  gap: 8px;
+}
+
+.conv-empty {
+  text-align: center;
+  color: var(--hify-text-placeholder);
+  padding: 40px 16px;
+  font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════
+   Chat Main Area
+   ═══════════════════════════════════════════════ */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--hify-bg-page);
+}
+
+/* ── 消息滚动区 ── */
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 0;
+  scroll-behavior: smooth;
+}
+
+/* 空状态 */
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 60px 20px;
+}
+
+.empty-graphic {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--hify-text-primary);
+  margin-bottom: 6px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: var(--hify-text-placeholder);
+}
+
+/* ── 消息行 ── */
+.msg-row {
+  display: flex;
+  gap: 14px;
+  padding: 16px 32px;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.msg-row.user {
+  flex-direction: row-reverse;
+}
+
+.msg-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.msg-avatar.user {
+  background: var(--hify-primary);
+  color: #fff;
+}
+
+.msg-avatar.assistant {
+  background: var(--hify-bg-active);
+  color: var(--hify-text-secondary);
+}
+
+.msg-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.msg-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hify-text-secondary);
+  margin-bottom: 4px;
+  padding: 0 2px;
+}
+
+.msg-row.user .msg-label {
+  text-align: right;
+}
+
+.msg-bubble {
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 12px 16px;
+  border-radius: 12px;
+  word-break: break-word;
+}
+
+.msg-bubble.user {
+  background: var(--hify-primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.msg-bubble.assistant {
+  background: var(--hify-bg-container);
+  border: 1px solid var(--hify-border);
+  border-bottom-left-radius: 4px;
+}
+
+.msg-bubble.assistant.live {
+  border-color: var(--hify-primary);
+  box-shadow: 0 0 0 1px rgba(124, 111, 240, 0.15);
+}
+
+.msg-bubble.assistant.error {
+  border-color: var(--hify-danger);
+  background: rgba(248, 113, 113, 0.04);
+}
+
+.error-msg {
+  color: var(--hify-danger);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  background: var(--hify-danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── 加载动画（三点跳动） ── */
+.loading-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.loading-dots i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hify-text-placeholder);
+  animation: dotBounce 1.2s infinite ease-in-out;
+}
+
+.loading-dots i:nth-child(2) { animation-delay: 0.15s; }
+.loading-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── 打字光标 ── */
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: var(--hify-primary);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.7s infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── Markdown ── */
+.markdown-body {
+  background: transparent !important;
+  font-size: 14px;
+  color: var(--hify-text-regular);
+}
+
+.markdown-body :deep(pre) {
+  background: var(--hify-bg-input);
+  border-radius: 8px;
+  margin: 8px 0;
+  border: 1px solid var(--hify-border-light);
+}
+
+.markdown-body :deep(code) {
+  font-size: 13px;
+  background: transparent;
+}
+
+.markdown-body :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-body :deep(ol),
+.markdown-body :deep(ul) {
+  padding-left: 1.5em;
+}
+
+.markdown-body :deep(table) {
+  border-collapse: collapse;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid var(--hify-border);
+  padding: 6px 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   底部输入区
+   ═══════════════════════════════════════════════ */
+.input-area {
+  padding: 16px 32px 20px;
+  background: var(--hify-bg-page);
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.msg-input :deep(.el-textarea__inner) {
+  background: var(--hify-bg-container);
+  border: 1px solid var(--hify-border);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 10px 16px;
+  color: var(--hify-text-primary);
+  box-shadow: var(--hify-shadow-sm);
+  transition: border-color var(--hify-transition-fast), box-shadow var(--hify-transition-fast);
+}
+
+.msg-input :deep(.el-textarea__inner):focus {
+  border-color: var(--hify-primary);
+  box-shadow: 0 0 0 3px rgba(124, 111, 240, 0.1);
+}
+
+.msg-input :deep(.el-textarea__inner)::placeholder {
+  color: var(--hify-text-placeholder);
+}
+
+.action-btn {
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 14px;
+  flex-shrink: 0;
+  min-width: 64px;
+}
+
+.input-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--hify-text-placeholder);
+  margin-top: 8px;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
 }
 </style>

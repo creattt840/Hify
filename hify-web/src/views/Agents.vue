@@ -57,7 +57,14 @@
         </el-form-item>
 
         <el-form-item label="绑定模型" prop="modelConfigId">
-          <el-input-number v-model="data.modelConfigId" :min="1" placeholder="模型配置 ID" />
+          <el-select v-model="data.modelConfigId" placeholder="请选择模型" style="width: 100%">
+            <el-option
+              v-for="mc in modelConfigOptions"
+              :key="mc.id"
+              :label="`${mc.name} (${mc.modelId})`"
+              :value="mc.id"
+            />
+          </el-select>
         </el-form-item>
 
         <el-form-item label="温度" prop="temperature">
@@ -73,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { FormRules } from 'element-plus'
 import HifyTable from '@/components/HifyTable.vue'
 import HifyFormDialog from '@/components/HifyFormDialog.vue'
@@ -82,6 +89,20 @@ import { get, post, put, del } from '@/utils/request'
 import { getAgentList } from '@/api/agent'
 import type { AgentResponse } from '@/types/agent'
 import type { PageResult } from '@/types'
+
+interface ModelConfigOption {
+  id: number
+  name: string
+  modelId: string
+  providerId: number
+}
+
+const modelConfigOptions = ref<ModelConfigOption[]>([])
+
+onMounted(async () => {
+  const data = await get('/v1/providers/model-configs')
+  modelConfigOptions.value = (data as ModelConfigOption[]) ?? []
+})
 
 // ─────────────────────── 表格 ───────────────────────
 

@@ -117,3 +117,35 @@
   /* 字体 */
   --el-font-family:               var(--hify-font-family);
 }
+
+/* ================================================================
+   Hify Light Theme
+   通过 .hify-light 类名切换浅色配色
+   ================================================================ */
+.hify-light {
+  --hify-bg-base:          #FFFFFF;
+  --hify-bg-page:          #F6F7F9;
+  --hify-bg-sidebar:       #E9EBF0;
+  --hify-bg-container:     #FFFFFF;
+  --hify-bg-elevated:      #FFFFFF;
+  --hify-bg-hover:         #EDEFF3;
+  --hify-bg-active:        #E2E5EB;
+  --hify-bg-input:         #F2F3F7;
+  --hify-bg-tooltip:       #1A1C21;
+
+  --hify-text-primary:     #16171C;
+  --hify-text-regular:     #3C3E46;
+  --hify-text-secondary:   #6E717B;
+  --hify-text-placeholder: #9CA0AB;
+  --hify-text-inverse:     #FFFFFF;
+
+  --hify-border:           #E2E5EB;
+  --hify-border-light:     #EEF0F4;
+  --hify-border-hover:     #CDD1D9;
+
+  --hify-shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.04);
+  --hify-shadow-base:  0 1px 3px rgba(0, 0, 0, 0.06);
+  --hify-shadow-md:    0 4px 12px rgba(0, 0, 0, 0.05);
+  --hify-shadow-lg:    0 10px 32px rgba(0, 0, 0, 0.07);
+  --hify-shadow-glow:  0 0 20px rgba(124, 111, 240, 0.12);
+}

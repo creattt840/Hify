@@ -157,7 +157,7 @@ public class ModelServiceImpl implements ModelService {
         Map<String, String> headers = buildHeaders(type, provider.getAuthConfig());
 
         long start = System.currentTimeMillis();
-        try (Response response = llmHttpClient.get(buildUrl(type, baseUrl), headers)) {
+        try (Response response = llmHttpClient.get(buildTestUrl(type, baseUrl, provider.getAuthConfig()), headers)) {
             long latencyMs = System.currentTimeMillis() - start;
 
             if (!response.isSuccessful()) {
@@ -209,24 +209,34 @@ public class ModelServiceImpl implements ModelService {
         switch (type) {
             case OPENAI:
             case OPENAI_COMPATIBLE:
-            case GEMINI:
                 headers.put("Authorization", "Bearer " + apiKey);
                 break;
             case ANTHROPIC:
                 headers.put("x-api-key", apiKey);
                 headers.put("anthropic-version", "2023-06-01");
                 break;
+            case GEMINI:
             case OLLAMA:
                 break;
         }
         return headers;
     }
 
-    private String buildUrl(ProviderType type, String baseUrl) {
+    private String buildTestUrl(ProviderType type, String baseUrl, Map<String, Object> authConfig) {
         switch (type) {
             case OLLAMA:
                 return baseUrl + "/api/tags";
+            case GEMINI: {
+                String key = extractApiKey(authConfig);
+                String sep = baseUrl.contains("?") ? "&" : "?";
+                return baseUrl + "/models" + sep + "key=" + key;
+            }
+            case ANTHROPIC:
+                return baseUrl + "/v1/models";
             default:
+                if (baseUrl.endsWith("/v1")) {
+                    return baseUrl + "/models";
+                }
                 return baseUrl + "/v1/models";
         }
     }
@@ -347,8 +357,79 @@ public class ModelServiceImpl implements ModelService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<ModelConfigResponse> listModelConfigs() {
+        // 只返回已启用 Provider 的模型配置
+        List<Long> enabledProviderIds = providerMapper.selectList(
+                        new LambdaQueryWrapper<ProviderPo>()
+                                .eq(ProviderPo::getIsEnabled, true)
+                                .eq(ProviderPo::getDeleted, 0))
+                .stream().map(ProviderPo::getId)
+                .collect(Collectors.toList());
+
+        if (enabledProviderIds.isEmpty()) return List.of();
+
+        return modelConfigMapper.selectList(
+                        new LambdaQueryWrapper<ModelConfigPo>()
+                                .in(ModelConfigPo::getProviderId, enabledProviderIds)
+                                .orderByAsc(ModelConfigPo::getName))
+                .stream().map(this::toModelConfigResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ModelConfigResponse> listModelConfigsByProviderId(Long providerId) {
+        return modelConfigMapper.selectList(
+                        new LambdaQueryWrapper<ModelConfigPo>()
+                                .eq(ModelConfigPo::getProviderId, providerId)
+                                .orderByAsc(ModelConfigPo::getName))
+                .stream().map(this::toModelConfigResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ModelConfigResponse createModelConfig(Long providerId, ModelConfigRequest request) {
+        // 验证 Provider 存在
+        requireProvider(providerId);
+        ModelConfigPo po = new ModelConfigPo();
+        po.setProviderId(providerId);
+        po.setName(request.getName());
+        po.setModelId(request.getModelId());
+        po.setExtraParams(request.getExtraParams() != null ? request.getExtraParams() : Map.of());
+        modelConfigMapper.insert(po);
+        return toModelConfigResponse(po);
+    }
+
+    @Override
+    public ModelConfigResponse updateModelConfig(Long configId, ModelConfigRequest request) {
+        ModelConfigPo po = modelConfigMapper.selectById(configId);
+        if (po == null) throw new BizException(ErrorCode.NOT_FOUND, "模型配置不存在");
+        po.setName(request.getName());
+        po.setModelId(request.getModelId());
+        po.setExtraParams(request.getExtraParams() != null ? request.getExtraParams() : Map.of());
+        modelConfigMapper.updateById(po);
+        return toModelConfigResponse(po);
+    }
+
+    @Override
+    public void deleteModelConfig(Long configId) {
+        ModelConfigPo po = modelConfigMapper.selectById(configId);
+        if (po == null) throw new BizException(ErrorCode.NOT_FOUND, "模型配置不存在");
+        modelConfigMapper.deleteById(configId);
+    }
+
     private static String rtrimSlash(String url) {
         if (url == null) return "";
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    private ModelConfigResponse toModelConfigResponse(ModelConfigPo po) {
+        ModelConfigResponse r = new ModelConfigResponse();
+        r.setId(po.getId());
+        r.setProviderId(po.getProviderId());
+        r.setName(po.getName());
+        r.setModelId(po.getModelId());
+        r.setExtraParams(po.getExtraParams());
+        return r;
     }
 }

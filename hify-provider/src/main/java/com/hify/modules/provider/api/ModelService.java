@@ -34,4 +34,19 @@ public interface ModelService {
 
     /** 批量获取提供商 */
     List<ProviderResponse> getProvidersByIds(List<Long> ids);
+
+    /** 获取全部模型配置列表（供下拉选择） */
+    List<ModelConfigResponse> listModelConfigs();
+
+    /** 获取某 Provider 下的模型配置列表 */
+    List<ModelConfigResponse> listModelConfigsByProviderId(Long providerId);
+
+    /** 为 Provider 创建模型配置 */
+    ModelConfigResponse createModelConfig(Long providerId, ModelConfigRequest request);
+
+    /** 更新模型配置 */
+    ModelConfigResponse updateModelConfig(Long configId, ModelConfigRequest request);
+
+    /** 删除模型配置 */
+    void deleteModelConfig(Long configId);
 }

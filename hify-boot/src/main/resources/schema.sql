@@ -100,3 +100,36 @@ CREATE TABLE IF NOT EXISTS t_agent_mcp_tool (
     INDEX idx_amt_agent (agent_id, deleted),
     INDEX idx_amt_tool (mcp_tool_id, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent MCP 工具关联';
+
+-- ----------------------------------------------------------
+-- 会话
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_conversation (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    agent_id        BIGINT          NOT NULL            COMMENT '关联 t_agent.id',
+    title           VARCHAR(256)    NOT NULL DEFAULT '' COMMENT '会话标题 (首轮用户消息截取)',
+    status          VARCHAR(16)     NOT NULL DEFAULT 'active' COMMENT '状态: active / archived',
+    message_count   INT             NOT NULL DEFAULT 0  COMMENT '消息数量 (冗余，方便列表展示)',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    INDEX idx_conv_agent (agent_id, deleted, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会话';
+
+-- ----------------------------------------------------------
+-- 消息 (游标分页)
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_message (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    conversation_id BIGINT          NOT NULL            COMMENT '关联 t_conversation.id',
+    role            VARCHAR(16)     NOT NULL            COMMENT '角色: user / assistant / system / tool',
+    content         MEDIUMTEXT      NOT NULL            COMMENT '消息内容',
+    token_count     INT             NOT NULL DEFAULT 0  COMMENT 'token 消耗',
+    metadata        JSON            NOT NULL            COMMENT '扩展信息 (工具调用/TTFT/引用)',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    INDEX idx_msg_conv_created (conversation_id, deleted, created_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息';

@@ -18,6 +18,7 @@ public enum ErrorCode {
     PROVIDER_RATE_LIMITED(2002, "模型提供商限流"),
     PROVIDER_AUTH_FAILED(2003, "模型提供商认证失败"),
     PROVIDER_TIMEOUT(2004, "模型提供商响应超时"),
+    INVALID_PROVIDER_TYPE(2005, "不支持的提供商类型"),
 
     // Agent 3000-3999
     AGENT_NOT_FOUND(3000, "Agent 不存在"),
