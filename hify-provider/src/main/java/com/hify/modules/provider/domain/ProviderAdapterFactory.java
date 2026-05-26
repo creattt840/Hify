@@ -26,7 +26,7 @@ public class ProviderAdapterFactory {
     }
 
     public ProviderAdapter create(ProviderType type, String baseUrl, Map<String, Object> authConfig) {
-        String apiKey = extractApiKey(authConfig);
+        String apiKey = AuthConfigUtil.extractApiKey(authConfig);
         switch (type) {
             case OPENAI:
             case OPENAI_COMPATIBLE:
@@ -42,9 +42,4 @@ public class ProviderAdapterFactory {
         }
     }
 
-    private String extractApiKey(Map<String, Object> authConfig) {
-        if (authConfig == null) return "";
-        Object key = authConfig.get("api_key");
-        return key != null ? key.toString() : "";
-    }
 }

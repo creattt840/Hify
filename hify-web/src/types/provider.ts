@@ -37,6 +37,8 @@ export interface ProviderListParams {
 export interface ModelConfigResponse {
   id: number
   providerId: number
+  /** 所属提供商名称 */
+  providerName?: string
   /** 配置名称，如 "GPT-4o" */
   name: string
   /** 模型 ID，如 "gpt-4o" */

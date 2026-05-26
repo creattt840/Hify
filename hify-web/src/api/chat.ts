@@ -1,4 +1,4 @@
-import { get, post } from '@/utils/request'
+import { get } from '@/utils/request'
 import type { Conversation, ChatMessage, ChatSendRequest } from '@/types/chat'
 
 const BASE = '/v1/conversations'

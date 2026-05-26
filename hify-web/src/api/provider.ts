@@ -5,6 +5,7 @@ import type {
   ProviderResponse,
   ProviderDetailResponse,
   ConnectionTestResult,
+  ModelConfigResponse,
 } from '@/types/provider'
 import type { Result, PageResult } from '@/types'
 
@@ -50,4 +51,9 @@ export function deleteProvider(id: number) {
  */
 export function testConnection(id: number) {
   return http.post<Result<ConnectionTestResult>>(`${BASE}/${id}/test-connection`)
+}
+
+/** 获取已启用提供商下的全部模型配置（供 Agent 绑定） */
+export function listModelConfigs() {
+  return http.get<Result<ModelConfigResponse[]>>(`${BASE}/model-configs`)
 }

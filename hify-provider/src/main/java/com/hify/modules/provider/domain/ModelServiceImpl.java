@@ -50,7 +50,7 @@ public class ModelServiceImpl implements ModelService {
         po.setName(request.getName());
         po.setProviderType(request.getProviderType());
         po.setBaseUrl(request.getBaseUrl() != null ? request.getBaseUrl() : "");
-        po.setAuthConfig(request.getAuthConfig());
+        po.setAuthConfig(AuthConfigUtil.normalize(request.getAuthConfig()));
         po.setIsEnabled(request.getIsEnabled());
         providerMapper.insert(po);
         return toResponse(po);
@@ -134,7 +134,7 @@ public class ModelServiceImpl implements ModelService {
         po.setName(request.getName());
         po.setProviderType(request.getProviderType());
         po.setBaseUrl(request.getBaseUrl() != null ? request.getBaseUrl() : "");
-        po.setAuthConfig(request.getAuthConfig());
+        po.setAuthConfig(AuthConfigUtil.mergeOnUpdate(po.getAuthConfig(), request.getAuthConfig()));
         po.setIsEnabled(request.getIsEnabled());
         providerMapper.updateById(po);
         return toResponse(po);
@@ -154,21 +154,21 @@ public class ModelServiceImpl implements ModelService {
 
         ProviderType type = ProviderType.fromCode(provider.getProviderType());
         String baseUrl = rtrimSlash(provider.getBaseUrl());
-        Map<String, String> headers = buildHeaders(type, provider.getAuthConfig());
+        ConnectivityProbe probe = resolveConnectivityProbe(type, baseUrl, provider.getAuthConfig());
 
         long start = System.currentTimeMillis();
-        try (Response response = llmHttpClient.get(buildTestUrl(type, baseUrl, provider.getAuthConfig()), headers)) {
+        try (Response response = llmHttpClient.get(probe.url(), probe.headers())) {
             long latencyMs = System.currentTimeMillis() - start;
 
             if (!response.isSuccessful()) {
                 String body = response.body() != null ? response.body().string() : "";
-                String msg = String.format("HTTP %d: %s", response.code(), body);
+                String msg = formatProbeError(response.code(), body, type, baseUrl);
                 updateHealthFailed(providerId, latencyMs);
                 return ConnectionTestResult.fail(msg);
             }
 
             String body = response.body() != null ? response.body().string() : "{}";
-            int modelCount = parseModelCount(type, body);
+            int modelCount = parseModelCount(probe.openAiStyleModels(), body);
             updateHealthSuccess(providerId, latencyMs);
             return ConnectionTestResult.ok(latencyMs, modelCount);
         } catch (IOException e) {
@@ -202,70 +202,74 @@ public class ModelServiceImpl implements ModelService {
         return r;
     }
 
-    private Map<String, String> buildHeaders(ProviderType type, Map<String, Object> authConfig) {
+    /**
+     * 连通性探测：URL + 请求头。
+     * DeepSeek 的 Anthropic 兼容入口不提供 /v1/models，需改用 OpenAI 兼容地址验证密钥。
+     */
+    private record ConnectivityProbe(String url, Map<String, String> headers, boolean openAiStyleModels) {
+        ConnectivityProbe(String url, Map<String, String> headers) {
+            this(url, headers, true);
+        }
+    }
+
+    private ConnectivityProbe resolveConnectivityProbe(ProviderType type, String baseUrl,
+                                                       Map<String, Object> authConfig) {
+        String base = rtrimSlash(baseUrl);
+        String lower = base.toLowerCase();
+        String apiKey = AuthConfigUtil.extractApiKey(authConfig);
+
+        if (lower.contains("deepseek.com")) {
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", "Bearer " + apiKey);
+            return new ConnectivityProbe("https://api.deepseek.com/v1/models", headers, true);
+        }
+
+        if (type == ProviderType.OLLAMA) {
+            return new ConnectivityProbe(base + "/api/tags", Map.of(), false);
+        }
+
+        if (type == ProviderType.GEMINI) {
+            String sep = base.contains("?") ? "&" : "?";
+            return new ConnectivityProbe(base + "/models" + sep + "key=" + apiKey, Map.of(), true);
+        }
+
+        if (type == ProviderType.ANTHROPIC) {
+            Map<String, String> headers = new HashMap<>();
+            headers.put("x-api-key", apiKey);
+            headers.put("anthropic-version", "2023-06-01");
+            String url = base.endsWith("/v1") ? base + "/models" : base + "/v1/models";
+            return new ConnectivityProbe(url, headers, true);
+        }
+
         Map<String, String> headers = new HashMap<>();
-        String apiKey = extractApiKey(authConfig);
-
-        switch (type) {
-            case OPENAI:
-            case OPENAI_COMPATIBLE:
-                headers.put("Authorization", "Bearer " + apiKey);
-                break;
-            case ANTHROPIC:
-                headers.put("x-api-key", apiKey);
-                headers.put("anthropic-version", "2023-06-01");
-                break;
-            case GEMINI:
-            case OLLAMA:
-                break;
-        }
-        return headers;
+        headers.put("Authorization", "Bearer " + apiKey);
+        String url = base.endsWith("/v1") ? base + "/models" : base + "/v1/models";
+        return new ConnectivityProbe(url, headers, true);
     }
 
-    private String buildTestUrl(ProviderType type, String baseUrl, Map<String, Object> authConfig) {
-        switch (type) {
-            case OLLAMA:
-                return baseUrl + "/api/tags";
-            case GEMINI: {
-                String key = extractApiKey(authConfig);
-                String sep = baseUrl.contains("?") ? "&" : "?";
-                return baseUrl + "/models" + sep + "key=" + key;
-            }
-            case ANTHROPIC:
-                return baseUrl + "/v1/models";
-            default:
-                if (baseUrl.endsWith("/v1")) {
-                    return baseUrl + "/models";
-                }
-                return baseUrl + "/v1/models";
+    private String formatProbeError(int code, String body, ProviderType type, String baseUrl) {
+        String trimmed = body != null && body.length() > 200 ? body.substring(0, 200) + "..." : body;
+        String msg = String.format("HTTP %d: %s", code, trimmed != null ? trimmed : "");
+        if (code == 404 && baseUrl.toLowerCase().contains("deepseek.com")
+                && type == ProviderType.ANTHROPIC) {
+            msg += "（DeepSeek 请使用类型 OpenAI Compatible，API 地址填 https://api.deepseek.com）";
         }
+        return msg;
     }
 
-    private int parseModelCount(ProviderType type, String body) {
+    private int parseModelCount(boolean openAiStyleModels, String body) {
         try {
             JsonNode root = objectMapper.readTree(body);
-            switch (type) {
-                case OLLAMA: {
-                    JsonNode models = root.get("models");
-                    return models != null && models.isArray() ? models.size() : 0;
-                }
-                default: {
-                    JsonNode data = root.get("data");
-                    return data != null && data.isArray() ? data.size() : 0;
-                }
+            if (!openAiStyleModels) {
+                JsonNode models = root.get("models");
+                return models != null && models.isArray() ? models.size() : 0;
             }
+            JsonNode data = root.get("data");
+            return data != null && data.isArray() ? data.size() : 0;
         } catch (Exception e) {
             log.warn("failed to parse response body: {}", e.getMessage());
             return 0;
         }
-    }
-
-    private String extractApiKey(Map<String, Object> authConfig) {
-        if (authConfig == null) {
-            return "";
-        }
-        Object key = authConfig.get("api_key");
-        return key != null ? key.toString() : "";
     }
 
     // ────────────────────────── 健康状态 ──────────────────────────
@@ -359,21 +363,28 @@ public class ModelServiceImpl implements ModelService {
 
     @Override
     public List<ModelConfigResponse> listModelConfigs() {
-        // 只返回已启用 Provider 的模型配置
-        List<Long> enabledProviderIds = providerMapper.selectList(
-                        new LambdaQueryWrapper<ProviderPo>()
-                                .eq(ProviderPo::getIsEnabled, true)
-                                .eq(ProviderPo::getDeleted, 0))
-                .stream().map(ProviderPo::getId)
-                .collect(Collectors.toList());
+        List<ProviderPo> enabledProviders = providerMapper.selectList(
+                new LambdaQueryWrapper<ProviderPo>().eq(ProviderPo::getIsEnabled, true));
+        if (enabledProviders.isEmpty()) {
+            return List.of();
+        }
 
-        if (enabledProviderIds.isEmpty()) return List.of();
+        Map<Long, String> providerNames = enabledProviders.stream()
+                .collect(Collectors.toMap(ProviderPo::getId, ProviderPo::getName, (a, b) -> a));
+        List<Long> enabledProviderIds = enabledProviders.stream()
+                .map(ProviderPo::getId)
+                .collect(Collectors.toList());
 
         return modelConfigMapper.selectList(
                         new LambdaQueryWrapper<ModelConfigPo>()
                                 .in(ModelConfigPo::getProviderId, enabledProviderIds)
                                 .orderByAsc(ModelConfigPo::getName))
-                .stream().map(this::toModelConfigResponse)
+                .stream()
+                .map(po -> {
+                    ModelConfigResponse r = toModelConfigResponse(po);
+                    r.setProviderName(providerNames.get(po.getProviderId()));
+                    return r;
+                })
                 .collect(Collectors.toList());
     }
 

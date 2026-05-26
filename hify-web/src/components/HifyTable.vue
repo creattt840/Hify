@@ -5,6 +5,7 @@
       :data="tableData"
       :border="false"
       stripe
+      empty-text="暂无数据"
       @sort-change="handleSortChange"
     >
       <el-table-column
@@ -35,7 +36,7 @@
   </div>
 </template>
 
-<script setup lang="ts" generic="T extends Record<string, unknown>">
+<script setup lang="ts" generic="T = Record<string, unknown>">
 import { ref, reactive, onMounted, computed } from 'vue'
 
 export interface ColumnConfig {
@@ -96,6 +97,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.hify-table :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--hify-bg-input);
+}
+
 .hify-table__pagination {
   display: flex;
   justify-content: flex-end;

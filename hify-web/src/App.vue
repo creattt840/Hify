@@ -8,12 +8,15 @@
           router
         >
           <el-menu-item index="/chat">
+            <span class="nav-icon">💬</span>
             <span>对话</span>
           </el-menu-item>
           <el-menu-item index="/agents">
+            <span class="nav-icon">🤖</span>
             <span>Agent 管理</span>
           </el-menu-item>
           <el-menu-item index="/providers">
+            <span class="nav-icon">⚡</span>
             <span>模型管理</span>
           </el-menu-item>
         </el-menu>
@@ -67,10 +70,20 @@ html, body, #app, .app-root {
 }
 
 .el-menu .el-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--hify-text-secondary);
   margin: 4px 8px;
   border-radius: 8px;
   font-size: 14px;
+  height: 44px;
+}
+
+.nav-icon {
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.85;
 }
 
 .el-menu .el-menu-item:hover {

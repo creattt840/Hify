@@ -10,6 +10,7 @@
           placeholder="选择 Agent"
           size="default"
           class="agent-picker"
+          filterable
         >
           <el-option
             v-for="a in agents"
@@ -18,6 +19,7 @@
             :value="a.id"
           />
         </el-select>
+        <p v-if="agents.length === 0" class="sidebar-hint">请先在 Agent 管理中创建并启用 Agent</p>
         <el-button
           class="new-chat-btn"
           @click="newConversation"
@@ -194,11 +196,15 @@ const inputRef = ref<any>(null)
 // ── 初始化 ──
 onMounted(async () => {
   try {
-    const list = await getAgentList({ page: 1, pageSize: 100 })
-    agents.value = (list as any)?.list || list || []
+    const res = await getAgentList({ page: 1, pageSize: 100 })
+    const body = res.data
+    agents.value = (body.data ?? []).filter((a) => a.isEnabled)
+    if (agents.value.length > 0) {
+      selectedAgentId.value = agents.value[0].id
+    }
     await loadConversations()
   } catch {
-    // ignore
+    agents.value = []
   }
 })
 
@@ -366,7 +372,14 @@ function formatTime(iso: string): string {
 
 .agent-picker {
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.sidebar-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--hify-warning);
 }
 
 .new-chat-btn {
