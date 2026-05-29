@@ -225,6 +225,3 @@ DELETE /api/v1/documents/{id}
 | 端口 8080 被占用 | 结束旧 Java 进程后重新 `mvn spring-boot:run` |
 | 启动无 `HifyPgPool` | 检查 `hify.pg.*` 配置与 PostgreSQL 是否运行 |
 
-## License
-
-内部项目，按需使用。
