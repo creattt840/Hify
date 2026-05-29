@@ -218,10 +218,5 @@ DELETE /api/v1/documents/{id}
 
 | 现象 | 处理 |
 |------|------|
-| 测试连接 HTTP 404（DeepSeek） | 类型改为 OpenAI Compatible，地址用 `https://api.deepseek.com` |
-| 文档处理 FAILED，Embedding 404 | DeepSeek 不支持 Embedding；添加 OpenAI 兼容 Embedding 提供商 |
 | 删除知识库报「服务器内部错误」 | 确认后端已重启，日志中有 `HifyPgPool`；旧进程未加载双数据源修复 |
-| Agent 下拉无模型 | 确认提供商已启用且保存时填写了模型 ID |
-| 端口 8080 被占用 | 结束旧 Java 进程后重新 `mvn spring-boot:run` |
-| 启动无 `HifyPgPool` | 检查 `hify.pg.*` 配置与 PostgreSQL 是否运行 |
 
