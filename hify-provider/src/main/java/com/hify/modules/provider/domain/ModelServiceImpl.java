@@ -429,6 +429,40 @@ public class ModelServiceImpl implements ModelService {
         modelConfigMapper.deleteById(configId);
     }
 
+    @Override
+    public ProviderResponse resolveEmbeddingProvider(String modelId) {
+        // 优先：查找 modelId 匹配的模型配置
+        List<ProviderPo> enabledProviders = providerMapper.selectList(
+                new LambdaQueryWrapper<ProviderPo>().eq(ProviderPo::getIsEnabled, true));
+        if (enabledProviders.isEmpty()) {
+            return null;
+        }
+        Map<Long, ProviderPo> providerMap = enabledProviders.stream()
+                .collect(Collectors.toMap(ProviderPo::getId, Function.identity(), (a, b) -> a));
+
+        if (modelId != null && !modelId.isBlank()) {
+            List<ModelConfigPo> configs = modelConfigMapper.selectList(
+                    new LambdaQueryWrapper<ModelConfigPo>()
+                            .eq(ModelConfigPo::getModelId, modelId));
+            for (ModelConfigPo c : configs) {
+                ProviderPo p = providerMap.get(c.getProviderId());
+                if (p != null) {
+                    return toResponse(p);
+                }
+            }
+        }
+
+        // 回退：首个启用的 OpenAI / OpenAI Compatible 提供商
+        for (ProviderPo p : enabledProviders) {
+            String type = p.getProviderType();
+            if ("openai".equals(type) || "openai_compatible".equals(type)) {
+                return toResponse(p);
+            }
+        }
+
+        return null;
+    }
+
     private static String rtrimSlash(String url) {
         if (url == null) return "";
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;

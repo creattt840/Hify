@@ -32,7 +32,10 @@ export function useConfirm() {
       onSuccess?.(result)
     } catch (err) {
       if (err !== 'cancel' && err !== 'close') {
-        notifyError('操作失败')
+        const msg = (err as { message?: string })?.message
+        if (!msg || msg === '请求失败') {
+          notifyError('操作失败')
+        }
       }
     }
   }

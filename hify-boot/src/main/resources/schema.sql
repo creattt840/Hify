@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS t_agent (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent';
 
 -- ----------------------------------------------------------
--- Agent ↔ 知识库关联（一期建表预留，不实现功能）
+-- Agent ↔ 知识库关联（N:N，一期实现）
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS t_agent_knowledge_base (
     id                BIGINT        NOT NULL AUTO_INCREMENT,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS t_agent_knowledge_base (
     created_at        DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     deleted           TINYINT(1)    NOT NULL DEFAULT 0  COMMENT '逻辑删除',
     PRIMARY KEY (id),
-    INDEX idx_akb_agent (agent_id, deleted),
+    UNIQUE INDEX idx_akb_unique (agent_id, knowledge_base_id, deleted),
     INDEX idx_akb_kb (knowledge_base_id, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent 知识库关联';
 
@@ -100,6 +100,41 @@ CREATE TABLE IF NOT EXISTS t_agent_mcp_tool (
     INDEX idx_amt_agent (agent_id, deleted),
     INDEX idx_amt_tool (mcp_tool_id, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent MCP 工具关联';
+
+-- ----------------------------------------------------------
+-- 知识库（元数据在 MySQL，向量数据在 PostgreSQL + pgvector）
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_knowledge_base (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    name            VARCHAR(128)    NOT NULL            COMMENT '知识库名称',
+    description     VARCHAR(512)    NOT NULL DEFAULT '' COMMENT '描述',
+    embed_model     VARCHAR(128)    NOT NULL DEFAULT '' COMMENT 'Embedding 模型标识（如 text-embedding-3-small）',
+    chunk_size      INT             NOT NULL DEFAULT 512 COMMENT '分块大小（字符数）',
+    chunk_overlap   INT             NOT NULL DEFAULT 64  COMMENT '分块重叠（字符数）',
+    is_enabled      TINYINT(1)      NOT NULL DEFAULT 1  COMMENT '是否启用',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识库';
+
+CREATE TABLE IF NOT EXISTS t_knowledge_document (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    kb_id           BIGINT          NOT NULL            COMMENT '关联 t_knowledge_base.id',
+    name            VARCHAR(256)    NOT NULL            COMMENT '文件名',
+    file_type       VARCHAR(16)     NOT NULL            COMMENT '文件类型: pdf / docx / txt / md',
+    file_path       VARCHAR(512)    NOT NULL DEFAULT '' COMMENT '文件存储路径（本地磁盘或 OSS）',
+    file_size       BIGINT          NOT NULL DEFAULT 0  COMMENT '文件大小（字节）',
+    status          VARCHAR(16)     NOT NULL DEFAULT 'pending' COMMENT 'pending → processing → completed → failed',
+    chunk_count     INT             NOT NULL DEFAULT 0  COMMENT '分块数量',
+    error_msg       VARCHAR(512)    NOT NULL DEFAULT '' COMMENT '处理失败时的错误信息',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    INDEX idx_kb_doc_kb (kb_id, deleted, status),
+    INDEX idx_kb_doc_status (status, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识库文档';
 
 -- ----------------------------------------------------------
 -- 会话

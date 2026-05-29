@@ -15,6 +15,10 @@
             <span class="nav-icon">🤖</span>
             <span>Agent 管理</span>
           </el-menu-item>
+          <el-menu-item index="/knowledge-bases">
+            <span class="nav-icon">📚</span>
+            <span>知识库</span>
+          </el-menu-item>
           <el-menu-item index="/providers">
             <span class="nav-icon">⚡</span>
             <span>模型管理</span>

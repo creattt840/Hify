@@ -22,3 +22,10 @@ dist/
 .DS_Store
 Thumbs.db
 
+### Runtime / local ###
+upload/
+hs_err_pid*.log
+replay_pid*.log
+docs/pgvector-pg18.zip
+docs/pgvector-pg18/
+

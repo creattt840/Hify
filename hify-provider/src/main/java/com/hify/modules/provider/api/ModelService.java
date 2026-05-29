@@ -49,4 +49,7 @@ public interface ModelService {
 
     /** 删除模型配置 */
     void deleteModelConfig(Long configId);
+
+    /** 根据模型名查找可用的 Embedding 提供商，优先匹配 modelId，无匹配则回退到首个启用的 OpenAI 类提供商 */
+    ProviderResponse resolveEmbeddingProvider(String modelId);
 }

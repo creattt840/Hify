@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hify.modules.provider.api.ChatRequest;
 import com.hify.modules.provider.api.ChatResponse;
+import com.hify.modules.provider.api.EmbeddingRequest;
+import com.hify.modules.provider.api.EmbeddingResponse;
 import com.hify.modules.provider.api.ProviderAdapter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
@@ -124,6 +126,57 @@ public class OpenAiAdapter implements ProviderAdapter {
                         .totalTokens(usage.path("total_tokens").asInt())
                         .build())
                 .build();
+    }
+
+    @Override
+    public EmbeddingResponse embed(EmbeddingRequest request) {
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("model", request.getModel());
+            body.put("input", request.getInput());
+            String json = objectMapper.writeValueAsString(body);
+
+            Map<String, String> headers = buildHeaders();
+            try (Response resp = httpClient.post(baseUrl + "/v1/embeddings", headers, json)) {
+                if (!resp.isSuccessful()) {
+                    String err = resp.body() != null ? resp.body().string() : "";
+                    throw new RuntimeException("Embedding failed: HTTP " + resp.code() + " " + err);
+                }
+                return parseEmbeddingResponse(resp);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("OpenAI embedding failed: " + e.getMessage(), e);
+        }
+    }
+
+    private EmbeddingResponse parseEmbeddingResponse(Response resp) throws IOException {
+        JsonNode root = objectMapper.readTree(resp.body().string());
+
+        EmbeddingResponse response = new EmbeddingResponse();
+        response.setModel(root.path("model").asText());
+
+        List<EmbeddingResponse.EmbeddingData> dataList = new ArrayList<>();
+        JsonNode dataArray = root.path("data");
+        for (JsonNode item : dataArray) {
+            EmbeddingResponse.EmbeddingData d = new EmbeddingResponse.EmbeddingData();
+            d.setIndex(item.path("index").asInt());
+            JsonNode embeddingNode = item.path("embedding");
+            float[] vec = new float[embeddingNode.size()];
+            for (int i = 0; i < embeddingNode.size(); i++) {
+                vec[i] = (float) embeddingNode.get(i).asDouble();
+            }
+            d.setEmbedding(vec);
+            dataList.add(d);
+        }
+        response.setData(dataList);
+
+        JsonNode usageNode = root.path("usage");
+        EmbeddingResponse.TokenUsage usage = new EmbeddingResponse.TokenUsage();
+        usage.setPromptTokens(usageNode.path("prompt_tokens").asInt());
+        usage.setTotalTokens(usageNode.path("total_tokens").asInt());
+        response.setUsage(usage);
+
+        return response;
     }
 
     private Map<String, String> buildHeaders() {

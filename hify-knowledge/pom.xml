@@ -18,10 +18,23 @@
             <groupId>com.hify</groupId>
             <artifactId>hify-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.hify</groupId>
+            <artifactId>hify-provider</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.pgvector</groupId>
             <artifactId>pgvector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
         </dependency>
     </dependencies>
 

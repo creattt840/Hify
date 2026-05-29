@@ -12,4 +12,9 @@ public interface ProviderAdapter {
 
     /** 流式调用，每次收到片段回调 consumer */
     void streamChat(ChatRequest request, Consumer<ChatResponse> onChunk);
+
+    /** 向量嵌入调用，默认抛出 UnsupportedOperationException */
+    default EmbeddingResponse embed(EmbeddingRequest request) {
+        throw new UnsupportedOperationException("Embedding not supported by this provider");
+    }
 }
