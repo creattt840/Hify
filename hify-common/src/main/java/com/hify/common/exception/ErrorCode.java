@@ -34,6 +34,11 @@ public enum ErrorCode {
     // Workflow 6000-6999
     WORKFLOW_NOT_FOUND(6000, "工作流不存在"),
     WORKFLOW_EXECUTION_FAILED(6001, "工作流执行失败"),
+    WORKFLOW_NOT_PUBLISHED(6002, "工作流未发布"),
+    WORKFLOW_ALREADY_PUBLISHED(6003, "工作流已发布，请先取消发布再修改"),
+    WORKFLOW_NODE_INVALID(6004, "工作流节点配置无效"),
+    WORKFLOW_CYCLE_DETECTED(6005, "工作流存在循环引用"),
+    WORKFLOW_START_NODE_REQUIRED(6006, "工作流必须包含 START 节点"),
 
     // Knowledge 7000-7999
     KNOWLEDGE_NOT_FOUND(7000, "知识库不存在"),

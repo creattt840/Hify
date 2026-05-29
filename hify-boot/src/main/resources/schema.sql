@@ -168,3 +168,56 @@ CREATE TABLE IF NOT EXISTS t_message (
     PRIMARY KEY (id),
     INDEX idx_msg_conv_created (conversation_id, deleted, created_at, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息';
+
+-- ----------------------------------------------------------
+-- 工作流定义
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_workflow (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    name            VARCHAR(128)    NOT NULL            COMMENT '工作流名称',
+    description     VARCHAR(512)    NOT NULL DEFAULT '' COMMENT '描述',
+    version         INT             NOT NULL DEFAULT 1  COMMENT '版本号',
+    is_enabled      TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '是否启用',
+    is_published    TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '是否已发布',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
+    PRIMARY KEY (id),
+    INDEX idx_wf_enabled (is_enabled, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作流定义';
+
+-- ----------------------------------------------------------
+-- 工作流节点（所有类型共用一张表，config JSON 列承载差异化字段）
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_workflow_node (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    workflow_id     BIGINT          NOT NULL            COMMENT '关联 t_workflow.id',
+    node_key        VARCHAR(64)     NOT NULL            COMMENT '节点标识（工作流内唯一）',
+    node_type       VARCHAR(32)     NOT NULL            COMMENT '节点类型: START/LLM/HTTP/SWITCH/CLASSIFY/COUPON/REPLY/END',
+    title           VARCHAR(128)    NOT NULL DEFAULT '' COMMENT '节点标题（展示用）',
+    config          JSON            NOT NULL            COMMENT '节点配置（类型决定结构）',
+    sort_order      INT             NOT NULL DEFAULT 0  COMMENT '展示排序',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
+    PRIMARY KEY (id),
+    INDEX idx_wfn_key (workflow_id, node_key, deleted),
+    INDEX idx_wfn_workflow (workflow_id, deleted, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作流节点';
+
+-- ----------------------------------------------------------
+-- 工作流边（节点之间的连接关系）
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_workflow_edge (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    workflow_id     BIGINT          NOT NULL            COMMENT '关联 t_workflow.id',
+    source          VARCHAR(64)     NOT NULL            COMMENT '源节点 node_key',
+    target          VARCHAR(64)     NOT NULL            COMMENT '目标节点 node_key',
+    `condition`     VARCHAR(256)    NOT NULL DEFAULT '' COMMENT '条件表达式（空表示无条件连接）',
+    sort_order      INT             NOT NULL DEFAULT 0  COMMENT '同源节点的分支排序',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
+    PRIMARY KEY (id),
+    INDEX idx_wfe_workflow (workflow_id, deleted, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作流边';
