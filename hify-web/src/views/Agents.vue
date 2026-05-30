@@ -43,6 +43,7 @@
       ref="dialogRef"
       v-model="dialogVisible"
       title="Agent"
+      width="640px"
       :rules="formRules"
       @submit="(d) => handleSubmit(d as unknown as AgentFormData)"
     >
@@ -96,6 +97,16 @@
           />
         </el-form-item>
 
+        <el-form-item label="MCP 工具" prop="toolIds">
+          <McpToolPicker
+            :model-value="Array.isArray(data.toolIds) ? data.toolIds : []"
+            :tools="mcpToolOptions"
+            :loading="mcpToolsLoading"
+            :max="MAX_MCP_TOOLS"
+            @update:model-value="(v) => { data.toolIds = v }"
+          />
+        </el-form-item>
+
         <el-form-item label="启用" prop="isEnabled">
           <el-switch v-model="data.isEnabled" />
         </el-form-item>
@@ -110,16 +121,23 @@ import { ElMessage } from 'element-plus'
 import type { FormRules } from 'element-plus'
 import HifyTable from '@/components/HifyTable.vue'
 import HifyFormDialog from '@/components/HifyFormDialog.vue'
+import McpToolPicker from '@/components/McpToolPicker.vue'
 import { useConfirm } from '@/components/useConfirm'
 import { post, put, del } from '@/utils/request'
-import { getAgentList } from '@/api/agent'
+import { getAgentList, bindAgentTools, getAgentBoundTools } from '@/api/agent'
 import { listModelConfigs } from '@/api/provider'
+import { getAvailableMcpTools } from '@/api/mcp'
 import type { AgentResponse } from '@/types/agent'
 import type { ModelConfigResponse } from '@/types/provider'
+import type { McpToolOption } from '@/types/mcp'
 import type { PageResult } from '@/types'
+
+const MAX_MCP_TOOLS = 10
 
 const modelConfigOptions = ref<ModelConfigResponse[]>([])
 const modelConfigsLoading = ref(false)
+const mcpToolOptions = ref<McpToolOption[]>([])
+const mcpToolsLoading = ref(false)
 
 function modelOptionLabel(mc: ModelConfigResponse): string {
   const provider = mc.providerName ? `${mc.providerName} · ` : ''
@@ -135,6 +153,15 @@ async function loadModelConfigs() {
     modelConfigOptions.value = []
   } finally {
     modelConfigsLoading.value = false
+  }
+}
+
+async function loadMcpTools() {
+  mcpToolsLoading.value = true
+  try {
+    mcpToolOptions.value = await getAvailableMcpTools()
+  } finally {
+    mcpToolsLoading.value = false
   }
 }
 
@@ -166,6 +193,7 @@ interface AgentFormData {
   modelConfigId: number | null
   temperature: number
   isEnabled: boolean
+  toolIds: number[]
 }
 
 const dialogVisible = ref(false)
@@ -185,15 +213,21 @@ const defaultFormData = (): AgentFormData => ({
   modelConfigId: null,
   temperature: 0.7,
   isEnabled: true,
+  toolIds: [],
 })
 
 async function openDialog(data?: AgentFormData) {
-  await loadModelConfigs()
+  await Promise.all([loadModelConfigs(), loadMcpTools()])
   dialogVisible.value = true
-  setTimeout(() => {
-    const initial = data ?? defaultFormData()
+  setTimeout(async () => {
+    const initial = data ? { ...data, toolIds: [...(data.toolIds ?? [])] } : defaultFormData()
     if (!data && modelConfigOptions.value.length > 0) {
       initial.modelConfigId = modelConfigOptions.value[0].id
+    }
+    if (data && editingId.value) {
+      const bound = await getAgentBoundTools(editingId.value)
+      const availableIds = new Set(mcpToolOptions.value.map((t) => t.id))
+      initial.toolIds = bound.filter((id) => availableIds.has(id))
     }
     dialogRef.value?.open(initial)
   })
@@ -213,12 +247,17 @@ function handleEdit(row: AgentResponse) {
     modelConfigId: row.modelConfigId,
     temperature: row.temperature ?? 0.7,
     isEnabled: row.isEnabled,
+    toolIds: [],
   })
 }
 
 async function handleSubmit(data: AgentFormData) {
   if (!data.modelConfigId) {
     ElMessage.warning('请选择绑定模型')
+    return
+  }
+  if ((data.toolIds ?? []).length > MAX_MCP_TOOLS) {
+    ElMessage.warning(`最多只能绑定 ${MAX_MCP_TOOLS} 个 MCP 工具`)
     return
   }
 
@@ -232,13 +271,17 @@ async function handleSubmit(data: AgentFormData) {
   }
 
   try {
-    if (editingId.value) {
-      await put(`/v1/agents/${editingId.value}`, payload)
+    let agentId = editingId.value
+    if (agentId) {
+      await put(`/v1/agents/${agentId}`, payload)
     } else {
-      await post('/v1/agents', payload)
+      const created = await post<AgentResponse>('/v1/agents', payload)
+      agentId = created.id
     }
+    await bindAgentTools(agentId!, data.toolIds ?? [])
     dialogVisible.value = false
     tableRef.value?.refresh()
+    ElMessage.success(editingId.value ? '保存成功' : '创建成功')
   } catch {
     // request.ts interceptor shows error message
   }

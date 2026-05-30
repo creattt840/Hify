@@ -1,4 +1,5 @@
-import http from './http'
+import http, { getSilent } from './http'
+import { get, put } from '@/utils/request'
 import type { AgentRequest, AgentResponse, AgentDetailResponse } from '@/types/agent'
 import type { Result, PageResult } from '@/types'
 
@@ -27,4 +28,14 @@ export function updateAgent(id: number, data: AgentRequest) {
 /** 删除 Agent */
 export function deleteAgent(id: number) {
   return http.delete<Result<null>>(`${BASE}/${id}`)
+}
+
+/** 获取 Agent 已绑定的 MCP 工具 ID 列表（静默，失败返回空数组） */
+export async function getAgentBoundTools(id: number): Promise<number[]> {
+  return (await getSilent<number[]>(`${BASE}/${id}/tools`)) ?? []
+}
+
+/** 绑定 MCP 工具（全量替换，最多 10 个） */
+export function bindAgentTools(id: number, toolIds: number[]) {
+  return put(`${BASE}/${id}/tools`, { toolIds })
 }

@@ -44,4 +44,16 @@ public class AgentController {
         agentService.delete(id);
         return Result.ok();
     }
+
+    @PutMapping("/{id}/tools")
+    public Result<Void> bindTools(@PathVariable Long id,
+                                  @Valid @RequestBody AgentToolBindRequest request) {
+        agentService.bindTools(id, request);
+        return Result.ok();
+    }
+
+    @GetMapping("/{id}/tools")
+    public Result<List<Long>> getBoundTools(@PathVariable Long id) {
+        return Result.ok(agentService.getBoundToolIds(id));
+    }
 }

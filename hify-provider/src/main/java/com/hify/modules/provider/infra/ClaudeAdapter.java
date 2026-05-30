@@ -107,10 +107,7 @@ public class ClaudeAdapter implements ProviderAdapter {
             if ("system".equals(msg.getRole())) {
                 systemContents.add(msg.getContent());
             } else {
-                Map<String, Object> m = new HashMap<>();
-                m.put("role", msg.getRole());
-                m.put("content", msg.getContent());
-                messages.add(m);
+                messages.add(toAnthropicMessage(msg));
             }
         }
 
@@ -127,8 +124,71 @@ public class ClaudeAdapter implements ProviderAdapter {
             }
         }
         if (request.getTemperature() != null) root.put("temperature", request.getTemperature());
+
+        // Anthropic tools 参数
+        if (request.getTools() != null && !request.getTools().isEmpty()) {
+            List<Map<String, Object>> tools = new ArrayList<>();
+            for (ChatRequest.Tool tool : request.getTools()) {
+                Map<String, Object> t = new HashMap<>();
+                t.put("name", tool.getFunction().getName());
+                t.put("description", tool.getFunction().getDescription());
+                t.put("input_schema", tool.getFunction().getParameters());
+                tools.add(t);
+            }
+            root.put("tools", tools);
+        }
+
         if (request.getExtraParams() != null) root.putAll(request.getExtraParams());
         return objectMapper.writeValueAsString(root);
+    }
+
+    /** 将 OpenAI 格式消息转为 Anthropic 格式 */
+    private Map<String, Object> toAnthropicMessage(ChatRequest.Message msg) throws JsonProcessingException {
+        Map<String, Object> m = new HashMap<>();
+
+        // role=tool → user + tool_result content block
+        if ("tool".equals(msg.getRole())) {
+            m.put("role", "user");
+            List<Map<String, Object>> content = new ArrayList<>();
+            Map<String, Object> toolResult = new HashMap<>();
+            toolResult.put("type", "tool_result");
+            toolResult.put("tool_use_id", msg.getToolCallId());
+            toolResult.put("content", msg.getContent() != null ? msg.getContent() : "");
+            content.add(toolResult);
+            m.put("content", content);
+            return m;
+        }
+
+        // role=assistant + tool_calls → assistant + text/tool_use blocks
+        if ("assistant".equals(msg.getRole())
+                && msg.getToolCalls() != null && !msg.getToolCalls().isEmpty()) {
+            m.put("role", "assistant");
+            List<Map<String, Object>> content = new ArrayList<>();
+            if (msg.getContent() != null && !msg.getContent().isEmpty()) {
+                Map<String, Object> text = new HashMap<>();
+                text.put("type", "text");
+                text.put("text", msg.getContent());
+                content.add(text);
+            }
+            for (ChatRequest.ToolCall tc : msg.getToolCalls()) {
+                Map<String, Object> toolUse = new HashMap<>();
+                toolUse.put("type", "tool_use");
+                toolUse.put("id", tc.getId());
+                toolUse.put("name", tc.getFunction().getName());
+                @SuppressWarnings("unchecked")
+                Map<String, Object> input = objectMapper.readValue(
+                        tc.getFunction().getArguments(), Map.class);
+                toolUse.put("input", input);
+                content.add(toolUse);
+            }
+            m.put("content", content);
+            return m;
+        }
+
+        // user / assistant 纯文本
+        m.put("role", msg.getRole());
+        m.put("content", msg.getContent() != null ? msg.getContent() : "");
+        return m;
     }
 
     private ChatResponse parseResponse(Response resp) throws IOException {
@@ -139,19 +199,35 @@ public class ClaudeAdapter implements ProviderAdapter {
         JsonNode node = objectMapper.readTree(resp.body().string());
         JsonNode content = node.path("content");
         StringBuilder text = new StringBuilder();
+        List<ChatResponse.ToolCall> toolCalls = new ArrayList<>();
         if (content.isArray()) {
             for (JsonNode block : content) {
-                if ("text".equals(block.path("type").asText())) {
+                String type = block.path("type").asText();
+                if ("text".equals(type)) {
                     text.append(block.path("text").asText());
+                } else if ("tool_use".equals(type)) {
+                    toolCalls.add(ChatResponse.ToolCall.builder()
+                            .id(block.path("id").asText())
+                            .type("function")
+                            .function(ChatResponse.FunctionCall.builder()
+                                    .name(block.path("name").asText())
+                                    .arguments(objectMapper.writeValueAsString(block.path("input")))
+                                    .build())
+                            .build());
                 }
             }
         }
         JsonNode usage = node.path("usage");
+        String stopReason = node.path("stop_reason").asText("end_turn");
+        String finishReason = (!toolCalls.isEmpty() || "tool_use".equals(stopReason))
+                ? "tool_calls" : stopReason;
+
         return ChatResponse.builder()
                 .id(node.path("id").asText())
                 .model(node.path("model").asText())
                 .content(text.toString())
-                .finishReason(node.path("stop_reason").asText("end_turn"))
+                .finishReason(finishReason)
+                .toolCalls(toolCalls.isEmpty() ? null : toolCalls)
                 .usage(ChatResponse.TokenUsage.builder()
                         .promptTokens(usage.path("input_tokens").asInt())
                         .completionTokens(usage.path("output_tokens").asInt())

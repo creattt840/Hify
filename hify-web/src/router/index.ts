@@ -40,7 +40,27 @@ const router = createRouter({
     {
       path: '/workflows/create',
       name: 'workflowCreate',
-      component: () => import('../views/WorkflowCreate.vue'),
+      component: () => import('../views/WorkflowEditorPage.vue'),
+    },
+    {
+      path: '/workflows/:id',
+      name: 'workflowView',
+      component: () => import('../views/WorkflowEditorPage.vue'),
+    },
+    {
+      path: '/workflows/:id/edit',
+      name: 'workflowEdit',
+      component: () => import('../views/WorkflowEditorPage.vue'),
+    },
+    {
+      path: '/mcp-servers',
+      name: 'mcpServers',
+      component: () => import('../views/mcp/McpServerList.vue'),
+    },
+    {
+      path: '/mcp-servers/:id',
+      name: 'mcpServerDetail',
+      component: () => import('../views/mcp/McpServerDetail.vue'),
     },
   ],
 })

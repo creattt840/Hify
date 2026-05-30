@@ -24,6 +24,7 @@ Thumbs.db
 
 ### Runtime / local ###
 upload/
+*.log
 hs_err_pid*.log
 replay_pid*.log
 docs/pgvector-pg18.zip

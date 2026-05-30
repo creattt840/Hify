@@ -40,6 +40,7 @@
         >
           <div class="conv-icon">💬</div>
           <div class="conv-body">
+            <div class="conv-agent">{{ resolveAgentName(conv) }}</div>
             <div class="conv-title">{{ conv.title || '新对话' }}</div>
             <div class="conv-meta">
               <span>{{ conv.messageCount }} 条消息</span>
@@ -62,9 +63,13 @@
 
     <!-- ========== 右侧聊天主区域 ========== -->
     <div class="chat-main">
+      <div v-if="currentConversationAgentName" class="chat-header">
+        <span class="chat-header-label">当前 Agent</span>
+        <span class="chat-header-agent">{{ currentConversationAgentName }}</span>
+      </div>
       <!-- 消息滚动区 -->
       <div class="messages-area" ref="messagesRef">
-        <div v-if="messages.length === 0 && !isLoading" class="chat-empty">
+        <div v-if="displayMessages.length === 0 && !isLoading" class="chat-empty">
           <div class="empty-graphic">✨</div>
           <div class="empty-title">
             {{ selectedAgentId ? '开始对话' : '选一个 Agent，开始对话' }}
@@ -76,8 +81,8 @@
 
         <!-- 历史消息 -->
         <div
-          v-for="msg in messages"
-          :key="msg.id"
+          v-for="msg in displayMessages"
+          :key="msg.id ?? `${msg.role}-${msg.createdAt}`"
           class="msg-row"
           :class="msg.role"
         >
@@ -92,7 +97,7 @@
                 {{ msg.content }}
               </template>
               <div
-                v-else
+                v-else-if="msg.content?.trim()"
                 class="markdown-body"
                 v-html="renderMarkdown(msg.content)"
               />
@@ -156,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { marked } from 'marked'
 import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
@@ -186,8 +191,28 @@ function renderMarkdown(content: string): string {
   return marked.parse(content) as string
 }
 
+/** 过滤 MCP 工具调用产生的中间消息，避免对话区出现空白/重复气泡 */
+function filterDisplayMessages(msgs: ChatMessage[]): ChatMessage[] {
+  const result: ChatMessage[] = []
+  for (let i = 0; i < msgs.length; i++) {
+    const msg = msgs[i]
+    if (msg.role === 'tool') continue
+
+    if (msg.role === 'assistant') {
+      const trimmed = msg.content?.trim() ?? ''
+      if (!trimmed || trimmed === '[调用工具]') continue
+      // 工具调用前的过渡语（下一条是 tool 消息）不展示
+      if (msgs[i + 1]?.role === 'tool') continue
+    }
+
+    result.push(msg)
+  }
+  return result
+}
+
 // ── 状态 ──
 const agents = ref<AgentResponse[]>([])
+const allAgents = ref<AgentResponse[]>([])
 const selectedAgentId = ref<number | null>(null)
 const conversations = ref<Conversation[]>([])
 const currentConversationId = ref<number | null>(null)
@@ -201,18 +226,36 @@ const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<any>(null)
 const { confirm } = useConfirm()
 
+/** 实际渲染的消息列表（隐藏 tool 中间态） */
+const displayMessages = computed(() => filterDisplayMessages(messages.value))
+
+/** 当前会话绑定的 Agent 名称 */
+const currentConversationAgentName = computed(() => {
+  if (!currentConversationId.value) return ''
+  const conv = conversations.value.find((c) => c.id === currentConversationId.value)
+  return conv ? resolveAgentName(conv) : ''
+})
+
+function resolveAgentName(conv: Conversation): string {
+  if (conv.agentName) return conv.agentName
+  const agent = allAgents.value.find((a) => a.id === conv.agentId)
+  return agent?.name || (conv.agentId ? `Agent #${conv.agentId}` : '未知 Agent')
+}
+
 // ── 初始化 ──
 onMounted(async () => {
   try {
     const res = await getAgentList({ page: 1, pageSize: 100 })
     const body = res.data
-    agents.value = (body.data ?? []).filter((a) => a.isEnabled)
+    allAgents.value = body.data ?? []
+    agents.value = allAgents.value.filter((a) => a.isEnabled)
     if (agents.value.length > 0) {
       selectedAgentId.value = agents.value[0].id
     }
     await loadConversations()
   } catch {
     agents.value = []
+    allAgents.value = []
   }
 })
 
@@ -237,6 +280,10 @@ function newConversation() {
 async function switchConversation(convId: number) {
   if (isLoading.value) return
   currentConversationId.value = convId
+  const conv = conversations.value.find((c) => c.id === convId)
+  if (conv?.agentId) {
+    selectedAgentId.value = conv.agentId
+  }
   messages.value = []
   streamingContent.value = ''
   try {
@@ -278,6 +325,8 @@ async function sendMessage() {
   isLoading.value = true
   streamingContent.value = ''
 
+  let doneConvId: number | null = currentConversationId.value
+
   try {
     const response = await sendMessageStream({
       agentId: selectedAgentId.value,
@@ -311,24 +360,42 @@ async function sendMessage() {
             scrollToBottom()
           } else if (currentEvent === 'done') {
             try {
-              const done = JSON.parse(raw)
-              if (done.convId) currentConversationId.value = done.convId
+              const payload = JSON.parse(raw)
+              if (payload.convId) {
+                doneConvId = payload.convId
+                currentConversationId.value = payload.convId
+              }
             } catch { /* */ }
+          } else if (currentEvent === 'error') {
+            streamError.value = raw || '对话请求失败'
           }
         }
       }
     }
-
-    if (streamingContent.value) {
+  } catch (err: any) {
+    streamError.value = err?.message || '网络异常，请重试'
+  } finally {
+    // 流结束后从服务端同步消息，避免 MCP 工具路径无 delta 时需手动刷新
+    if (doneConvId && !streamError.value) {
+      try {
+        messages.value = await getMessages(doneConvId)
+      } catch {
+        if (streamingContent.value) {
+          messages.value.push({
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: streamingContent.value,
+          })
+        }
+      }
+    } else if (streamingContent.value && !streamError.value) {
       messages.value.push({
         id: Date.now() + 1,
         role: 'assistant',
         content: streamingContent.value,
       })
     }
-  } catch (err: any) {
-    streamError.value = err?.message || '网络异常，请重试'
-  } finally {
+
     streamingContent.value = ''
     isLoading.value = false
     await nextTick()
@@ -462,6 +529,7 @@ function formatTime(iso: string): string {
 
 .conv-item.active .conv-icon,
 .conv-item.active .conv-title,
+.conv-item.active .conv-agent,
 .conv-item.active .conv-meta {
   color: #fff;
 }
@@ -516,6 +584,21 @@ function formatTime(iso: string): string {
   min-width: 0;
 }
 
+.conv-agent {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hify-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+  letter-spacing: 0.02em;
+}
+
+.conv-item.active .conv-agent {
+  color: rgba(255, 255, 255, 0.92);
+}
+
 .conv-title {
   font-size: 14px;
   font-weight: 500;
@@ -549,6 +632,27 @@ function formatTime(iso: string): string {
   flex-direction: column;
   min-width: 0;
   background: #EEF0F5;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--hify-border-light);
+  flex-shrink: 0;
+}
+
+.chat-header-label {
+  font-size: 12px;
+  color: var(--hify-text-placeholder);
+}
+
+.chat-header-agent {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hify-primary);
 }
 
 /* ── 消息滚动区 ── */
@@ -817,12 +921,21 @@ function formatTime(iso: string): string {
 
 .markdown-body :deep(ol),
 .markdown-body :deep(ul) {
-  padding-left: 1.5em;
+  padding-left: 1.6em;
   margin: 8px 0;
+  list-style-position: outside;
 }
 
 .markdown-body :deep(li) {
-  margin: 4px 0;
+  display: list-item;
+  margin: 6px 0;
+  padding-left: 0.2em;
+  line-height: 1.6;
+}
+
+.markdown-body :deep(li > p) {
+  margin: 0;
+  display: inline;
 }
 
 .markdown-body :deep(table) {

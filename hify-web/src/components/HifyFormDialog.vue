@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="modelValue"
     :title="isEdit ? `编辑${title}` : `新增${title}`"
-    width="560px"
+    :width="width ?? '560px'"
     :close-on-click-modal="false"
     @close="handleClose"
   >
@@ -32,6 +32,7 @@ const props = defineProps<{
   modelValue: boolean
   title: string
   rules?: FormRules
+  width?: string
 }>()
 
 const emit = defineEmits<{
@@ -74,7 +75,7 @@ function handleClose() {
 }
 
 watch(() => props.modelValue, (val) => {
-  if (val) {
+  if (!val) {
     isEdit.value = false
     Object.assign(formData, { ...defaults })
   }

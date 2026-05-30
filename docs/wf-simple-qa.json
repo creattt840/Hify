@@ -1,0 +1,14 @@
+{
+  "name": "简单问答工作流",
+  "description": "线性流程：用户提问 → LLM 直接回答 → 结束",
+  "isEnabled": true,
+  "nodes": [
+    {"nodeKey": "start", "nodeType": "START", "title": "开始", "config": {}, "sortOrder": 0},
+    {"nodeKey": "answer", "nodeType": "LLM", "title": "回答问题", "config": {"modelConfigId": 4, "prompt": "你是友好的助手。请简洁、准确地回答用户问题。\n\n用户问题：{{start.userMessage}}", "outputVariable": "reply", "temperature": 0.7}, "sortOrder": 1},
+    {"nodeKey": "end", "nodeType": "END", "title": "结束", "config": {}, "sortOrder": 2}
+  ],
+  "edges": [
+    {"source": "start", "target": "answer", "sortOrder": 0},
+    {"source": "answer", "target": "end", "sortOrder": 0}
+  ]
+}

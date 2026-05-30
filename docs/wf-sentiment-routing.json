@@ -1,0 +1,21 @@
+{
+  "name": "情感分流工作流",
+  "description": "先判断用户情绪正负，再分别生成安抚或鼓励回复",
+  "isEnabled": true,
+  "nodes": [
+    {"nodeKey": "start", "nodeType": "START", "title": "开始", "config": {}, "sortOrder": 0},
+    {"nodeKey": "classify", "nodeType": "LLM", "title": "情感分类", "config": {"modelConfigId": 4, "prompt": "判断以下用户消息的情感倾向。只回答一个词：positive 或 negative。不要回答任何其他内容。\n\n用户消息：{{start.userMessage}}", "outputVariable": "sentiment"}, "sortOrder": 1},
+    {"nodeKey": "cond", "nodeType": "CONDITION", "title": "是否正面", "config": {"expression": "{{classify.sentiment}} == positive", "outputVariable": "isPositive"}, "sortOrder": 2},
+    {"nodeKey": "positive_reply", "nodeType": "LLM", "title": "正面回复", "config": {"modelConfigId": 4, "prompt": "用户情绪积极。请用热情、鼓励的语气回复，并适当延伸话题。\n\n用户消息：{{start.userMessage}}", "outputVariable": "reply"}, "sortOrder": 3},
+    {"nodeKey": "negative_reply", "nodeType": "LLM", "title": "负面回复", "config": {"modelConfigId": 4, "prompt": "用户情绪消极。请用温和、共情的语气安抚，并给出建设性建议。\n\n用户消息：{{start.userMessage}}", "outputVariable": "reply"}, "sortOrder": 4},
+    {"nodeKey": "end", "nodeType": "END", "title": "结束", "config": {}, "sortOrder": 5}
+  ],
+  "edges": [
+    {"source": "start", "target": "classify", "sortOrder": 0},
+    {"source": "classify", "target": "cond", "sortOrder": 0},
+    {"source": "cond", "target": "positive_reply", "condition": "true", "sortOrder": 0},
+    {"source": "cond", "target": "negative_reply", "condition": "false", "sortOrder": 1},
+    {"source": "positive_reply", "target": "end", "sortOrder": 0},
+    {"source": "negative_reply", "target": "end", "sortOrder": 0}
+  ]
+}

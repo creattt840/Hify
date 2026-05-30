@@ -1,0 +1,26 @@
+{
+  "name": "智能客服分流",
+  "description": "三路分流：售后/售前/技术支持",
+  "isEnabled": true,
+  "nodes": [
+    {"nodeKey":"start","nodeType":"START","title":"开始","config":{},"sortOrder":0},
+    {"nodeKey":"classify","nodeType":"LLM","title":"问题分类","config":{"modelConfigId":4,"prompt":"请判断以下用户消息属于哪个类别。只回答一个词：售后、售前 或 技术支持。不要回答任何其他内容。\n\n用户消息：{{start.userMessage}}","outputVariable":"category"},"sortOrder":1},
+    {"nodeKey":"cond_after","nodeType":"CONDITION","title":"是否售后","config":{"expression":"{{classify.category}} == 售后","outputVariable":"isAfter"},"sortOrder":2},
+    {"nodeKey":"aftersale","nodeType":"LLM","title":"售后回复","config":{"modelConfigId":4,"prompt":"你是售后客服。请针对用户的售后问题给出专业、诚恳的回复。\n\n用户消息：{{start.userMessage}}","outputVariable":"reply"},"sortOrder":3},
+    {"nodeKey":"cond_pre","nodeType":"CONDITION","title":"是否售前","config":{"expression":"{{classify.category}} == 售前","outputVariable":"isPre"},"sortOrder":4},
+    {"nodeKey":"presale","nodeType":"LLM","title":"售前回复","config":{"modelConfigId":4,"prompt":"你是售前顾问。请针对用户的产品咨询给出详细、有吸引力的回复。\n\n用户消息：{{start.userMessage}}","outputVariable":"reply"},"sortOrder":5},
+    {"nodeKey":"techsupport","nodeType":"LLM","title":"技术支持回复","config":{"modelConfigId":4,"prompt":"你是技术支持工程师。请针对用户的技术问题给出清晰、步骤化的排查方案。\n\n用户消息：{{start.userMessage}}","outputVariable":"reply"},"sortOrder":6},
+    {"nodeKey":"end","nodeType":"END","title":"结束","config":{},"sortOrder":7}
+  ],
+  "edges": [
+    {"source":"start","target":"classify","sortOrder":0},
+    {"source":"classify","target":"cond_after","sortOrder":0},
+    {"source":"cond_after","target":"aftersale","condition":"true","sortOrder":0},
+    {"source":"cond_after","target":"cond_pre","condition":"false","sortOrder":1},
+    {"source":"cond_pre","target":"presale","condition":"true","sortOrder":0},
+    {"source":"cond_pre","target":"techsupport","condition":"false","sortOrder":1},
+    {"source":"aftersale","target":"end","sortOrder":0},
+    {"source":"presale","target":"end","sortOrder":0},
+    {"source":"techsupport","target":"end","sortOrder":0}
+  ]
+}

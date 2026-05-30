@@ -1,6 +1,7 @@
 export interface Conversation {
   id: number
   agentId: number
+  agentName: string
   title: string
   status: string
   messageCount: number
@@ -11,7 +12,7 @@ export interface Conversation {
 export interface ChatMessage {
   id?: number
   conversationId?: number
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
   tokenCount?: number
   createdAt?: string

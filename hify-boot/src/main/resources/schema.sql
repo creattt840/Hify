@@ -54,6 +54,37 @@ CREATE TABLE IF NOT EXISTS t_provider_health (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='提供商健康状态';
 
 -- ----------------------------------------------------------
+-- MCP Server
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_mcp_server (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    name            VARCHAR(128)    NOT NULL            COMMENT 'MCP Server 名称',
+    endpoint        VARCHAR(512)    NOT NULL            COMMENT 'MCP Server 端点 URL',
+    is_enabled      TINYINT(1)      NOT NULL DEFAULT 1  COMMENT '是否启用',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
+    PRIMARY KEY (id),
+    INDEX idx_mcps_enabled (is_enabled, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='MCP Server';
+
+-- ----------------------------------------------------------
+-- MCP 工具（从 tools/list 同步，由连通性测试刷新）
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_mcp_tool (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    server_id       BIGINT          NOT NULL            COMMENT '关联 t_mcp_server.id',
+    name            VARCHAR(128)    NOT NULL            COMMENT '工具名称',
+    description     VARCHAR(512)    NOT NULL DEFAULT '' COMMENT '工具描述（供 LLM 选工具用）',
+    input_schema    JSON            NOT NULL            COMMENT '输入参数 JSON Schema',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
+    PRIMARY KEY (id),
+    INDEX idx_mcpt_server (server_id, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='MCP 工具';
+
+-- ----------------------------------------------------------
 -- Agent 管理
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS t_agent (
@@ -89,18 +120,20 @@ CREATE TABLE IF NOT EXISTS t_agent_knowledge_base (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent 知识库关联';
 
 -- ----------------------------------------------------------
--- Agent ↔ MCP 工具关联（一期建表预留，不实现功能）
+-- Agent ↔ MCP 工具关联
 -- ----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS t_agent_mcp_tool (
+CREATE TABLE IF NOT EXISTS t_agent_tool (
     id              BIGINT          NOT NULL AUTO_INCREMENT,
     agent_id        BIGINT          NOT NULL            COMMENT '关联 t_agent.id',
-    mcp_tool_id     BIGINT          NOT NULL            COMMENT '关联 t_mcp_tool.id',
+    tool_id         BIGINT          NOT NULL            COMMENT '关联 t_mcp_tool.id',
     created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
     PRIMARY KEY (id),
-    INDEX idx_amt_agent (agent_id, deleted),
-    INDEX idx_amt_tool (mcp_tool_id, deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent MCP 工具关联';
+    UNIQUE INDEX uk_agent_tool (agent_id, tool_id, deleted),
+    INDEX idx_aat_agent (agent_id, deleted),
+    INDEX idx_aat_tool (tool_id, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent 工具绑定';
 
 -- ----------------------------------------------------------
 -- 知识库（元数据在 MySQL，向量数据在 PostgreSQL + pgvector）

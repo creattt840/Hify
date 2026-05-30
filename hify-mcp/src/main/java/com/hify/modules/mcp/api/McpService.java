@@ -1,8 +1,19 @@
 package com.hify.modules.mcp.api;
 
+import java.util.List;
+import java.util.Map;
+
 /**
- * MCP 工具模块对外暴露接口 —— 供其他模块（Agent、Workflow）调用。
- * 只定义跨模块可用的 interface 和 DTO。
+ * MCP 模块对外暴露的统一接口 —— 供 Agent、Workflow 模块调用。
+ * 委托给 {@link McpClientService} 实现。
  */
-public interface McpService {
+public interface McpService extends McpClientService {
+
+    /** @see McpClientService#callTool */
+    @Override
+    String callTool(Long mcpServerId, String toolName, Map<String, Object> arguments);
+
+    /** @see McpClientService#listTools */
+    @Override
+    List<String> listTools(Long mcpServerId);
 }

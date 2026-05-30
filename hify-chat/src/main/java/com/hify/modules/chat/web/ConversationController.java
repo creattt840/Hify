@@ -2,8 +2,8 @@ package com.hify.modules.chat.web;
 
 import com.hify.common.web.Result;
 import com.hify.modules.chat.api.ChatSendRequest;
+import com.hify.modules.chat.api.ConversationResponse;
 import com.hify.modules.chat.api.ConversationService;
-import com.hify.modules.chat.infra.entity.ConversationPo;
 import com.hify.modules.chat.infra.entity.MessagePo;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ public class ConversationController {
     private final ConversationService conversationService;
 
     @GetMapping
-    public Result<List<ConversationPo>> list() {
+    public Result<List<ConversationResponse>> list() {
         return Result.ok(conversationService.listConversations());
     }
 

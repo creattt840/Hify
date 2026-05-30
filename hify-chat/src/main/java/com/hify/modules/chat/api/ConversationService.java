@@ -12,7 +12,7 @@ public interface ConversationService {
     SseEmitter sendMessage(Long agentId, Long conversationId, String content);
 
     /** 列出所有会话 */
-    List<ConversationPo> listConversations();
+    List<ConversationResponse> listConversations();
 
     /** 获取会话消息列表（时间升序） */
     List<MessagePo> getMessages(Long conversationId);

@@ -19,6 +19,11 @@ export function createWorkflow(data: WorkflowCreateRequest) {
   return http.post<Result<WorkflowResponse>>(BASE, data)
 }
 
+/** 更新工作流 */
+export function updateWorkflow(id: number, data: WorkflowCreateRequest) {
+  return http.put<Result<WorkflowResponse>>(`${BASE}/${id}`, data)
+}
+
 /** 删除工作流 */
 export function deleteWorkflow(id: number) {
   return http.delete<Result<null>>(`${BASE}/${id}`)

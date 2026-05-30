@@ -22,14 +22,19 @@ public enum ErrorCode {
 
     // Agent 3000-3999
     AGENT_NOT_FOUND(3000, "Agent 不存在"),
+    AGENT_TOOL_LIMIT_EXCEEDED(3001, "Agent 最多绑定 10 个工具"),
 
     // Chat 4000-4999
     CONVERSATION_NOT_FOUND(4000, "对话不存在"),
     MESSAGE_SEND_FAILED(4001, "消息发送失败"),
 
     // MCP 5000-5999
-    MCP_TOOL_NOT_FOUND(5000, "MCP 工具不存在"),
+    MCP_SERVER_NOT_FOUND(5000, "MCP Server 不存在"),
     MCP_TOOL_CALL_FAILED(5001, "MCP 工具调用失败"),
+    MCP_SERVER_IN_USE(5002, "MCP Server 有 Agent 正在使用，无法删除"),
+    MCP_CONNECTION_FAILED(5003, "MCP Server 连接失败"),
+    MCP_TOOL_NOT_FOUND(5004, "MCP 工具不存在"),
+    MCP_SERVER_DISABLED(5005, "MCP Server 已禁用，无法绑定其工具"),
 
     // Workflow 6000-6999
     WORKFLOW_NOT_FOUND(6000, "工作流不存在"),

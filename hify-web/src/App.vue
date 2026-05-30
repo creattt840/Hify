@@ -24,6 +24,10 @@
             <span class="nav-icon">🔀</span>
             <span>工作流</span>
           </el-menu-item>
+          <el-menu-item index="/mcp-servers">
+            <span class="nav-icon">🔧</span>
+            <span>MCP 服务</span>
+          </el-menu-item>
           <el-menu-item index="/providers">
             <span class="nav-icon">⚡</span>
             <span>模型管理</span>

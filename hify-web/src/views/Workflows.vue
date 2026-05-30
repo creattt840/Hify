@@ -3,7 +3,7 @@
     <header class="page__header">
       <div class="page__title-block">
         <h2>工作流管理</h2>
-        <p class="page__desc">创建和配置工作流，将 Agent 从自由对话切换为结构化多步执行</p>
+        <p class="page__desc">可视化编排多步执行流程，将 Agent 从自由对话切换为结构化执行</p>
       </div>
       <el-button type="primary" @click="handleCreate">新建工作流</el-button>
     </header>
@@ -21,9 +21,17 @@
         </template>
 
         <template #actions="{ row }">
-          <el-button type="danger" size="small" text @click="handleDelete(row)">
-            删除
-          </el-button>
+          <div class="actions-cell">
+            <el-button link type="primary" size="small" @click="handleView(row)">
+              查看
+            </el-button>
+            <el-button link type="primary" size="small" @click="handleEdit(row)">
+              编辑
+            </el-button>
+            <el-button link type="danger" size="small" @click="handleDelete(row)">
+              删除
+            </el-button>
+          </div>
         </template>
       </HifyTable>
     </div>
@@ -49,7 +57,7 @@ const columns: ColumnConfig[] = [
   { prop: 'status', label: '状态', width: '100', slot: 'status' },
   { prop: 'nodeCount', label: '节点数', width: '80', slot: 'nodeCount' },
   { prop: 'createdAt', label: '创建时间', width: '180' },
-  { prop: 'actions', label: '操作', width: '100', slot: 'actions' },
+  { prop: 'actions', label: '操作', width: '180', slot: 'actions' },
 ]
 
 async function fetchWorkflows(params: { page: number; pageSize: number }) {
@@ -62,6 +70,14 @@ function handleCreate() {
   router.push({ name: 'workflowCreate' })
 }
 
+function handleView(row: WorkflowListItem) {
+  router.push({ name: 'workflowView', params: { id: row.id } })
+}
+
+function handleEdit(row: WorkflowListItem) {
+  router.push({ name: 'workflowEdit', params: { id: row.id } })
+}
+
 function handleDelete(row: WorkflowListItem) {
   confirm(
     { message: `确定删除「${row.name}」吗？删除后不可恢复。` },
@@ -70,3 +86,11 @@ function handleDelete(row: WorkflowListItem) {
   )
 }
 </script>
+
+<style scoped>
+.actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+</style>
