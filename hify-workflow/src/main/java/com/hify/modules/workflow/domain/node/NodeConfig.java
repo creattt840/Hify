@@ -8,17 +8,21 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "_type")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = StartNodeConfig.class,    name = "START"),
-    @JsonSubTypes.Type(value = EndNodeConfig.class,      name = "END"),
-    @JsonSubTypes.Type(value = LlmNodeConfig.class,      name = "LLM"),
-    @JsonSubTypes.Type(value = HttpNodeConfig.class,     name = "HTTP"),
-    @JsonSubTypes.Type(value = SwitchNodeConfig.class,   name = "SWITCH"),
-    @JsonSubTypes.Type(value = ClassifyNodeConfig.class, name = "CLASSIFY"),
-    @JsonSubTypes.Type(value = CouponNodeConfig.class,   name = "COUPON"),
-    @JsonSubTypes.Type(value = ReplyNodeConfig.class,    name = "REPLY"),
+    @JsonSubTypes.Type(value = StartNodeConfig.class,      name = "START"),
+    @JsonSubTypes.Type(value = EndNodeConfig.class,        name = "END"),
+    @JsonSubTypes.Type(value = LlmNodeConfig.class,        name = "LLM"),
+    @JsonSubTypes.Type(value = HttpNodeConfig.class,       name = "HTTP"),
+    @JsonSubTypes.Type(value = SwitchNodeConfig.class,     name = "SWITCH"),
+    @JsonSubTypes.Type(value = ClassifyNodeConfig.class,   name = "CLASSIFY"),
+    @JsonSubTypes.Type(value = CouponNodeConfig.class,     name = "COUPON"),
+    @JsonSubTypes.Type(value = ReplyNodeConfig.class,      name = "REPLY"),
+    @JsonSubTypes.Type(value = ConditionNodeConfig.class,  name = "CONDITION"),
+    @JsonSubTypes.Type(value = ApiCallNodeConfig.class,    name = "API_CALL"),
+    @JsonSubTypes.Type(value = KnowledgeNodeConfig.class,   name = "KNOWLEDGE"),
 })
 public sealed interface NodeConfig
     permits StartNodeConfig, EndNodeConfig, LlmNodeConfig,
             HttpNodeConfig, SwitchNodeConfig, ClassifyNodeConfig,
-            CouponNodeConfig, ReplyNodeConfig {
+            CouponNodeConfig, ReplyNodeConfig, ConditionNodeConfig,
+            ApiCallNodeConfig, KnowledgeNodeConfig {
 }

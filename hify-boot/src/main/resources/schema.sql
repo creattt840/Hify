@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS t_agent (
     model_config_id BIGINT          NOT NULL            COMMENT '绑定的模型配置 ID (t_model_config.id)',
     temperature     DECIMAL(3,2)    NOT NULL DEFAULT 0.7 COMMENT '温度参数 (0.0-2.0)',
     is_enabled      TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '是否启用',
+    workflow_id     BIGINT          DEFAULT NULL        COMMENT '绑定的工作流 ID (t_workflow.id)',
     created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
@@ -221,3 +222,40 @@ CREATE TABLE IF NOT EXISTS t_workflow_edge (
     PRIMARY KEY (id),
     INDEX idx_wfe_workflow (workflow_id, deleted, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作流边';
+
+-- ----------------------------------------------------------
+-- 工作流执行记录（每次用户触发执行，生成一条）
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_workflow_run (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    workflow_id     BIGINT          NOT NULL            COMMENT '关联 t_workflow.id',
+    status          VARCHAR(20)     NOT NULL            COMMENT 'RUNNING / SUCCESS / FAILED',
+    input           TEXT                                COMMENT '用户输入',
+    output          TEXT                                COMMENT '最终输出',
+    error           VARCHAR(500)                        COMMENT '错误信息',
+    elapsed_ms      INT                                 COMMENT '总耗时（毫秒）',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
+    PRIMARY KEY (id),
+    INDEX idx_wfr_workflow (workflow_id, deleted, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作流执行记录';
+
+-- ----------------------------------------------------------
+-- 工作流节点执行记录（每次执行中每个节点生成一条）
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS t_workflow_node_run (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    workflow_run_id BIGINT          NOT NULL            COMMENT '关联 t_workflow_run.id',
+    node_key        VARCHAR(64)     NOT NULL            COMMENT '节点标识',
+    node_type       VARCHAR(30)     NOT NULL            COMMENT '节点类型',
+    status          VARCHAR(20)     NOT NULL            COMMENT 'RUNNING / SUCCESS / FAILED',
+    outputs         JSON                                COMMENT 'ctx.snapshot() 快照',
+    error           VARCHAR(500)                        COMMENT '错误信息',
+    elapsed_ms      INT                                 COMMENT '节点耗时（毫秒）',
+    created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    deleted         TINYINT(1)      NOT NULL DEFAULT 0  COMMENT '逻辑删除',
+    PRIMARY KEY (id),
+    INDEX idx_wfnr_run (workflow_run_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作流节点执行记录';

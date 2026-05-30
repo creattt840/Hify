@@ -26,4 +26,7 @@ public class AgentUpdateRequest {
 
     @NotNull(message = "启用状态不能为空")
     private Boolean isEnabled;
+
+    /** 绑定的工作流 ID，null 或 0 表示解绑/不绑定 */
+    private Long workflowId;
 }

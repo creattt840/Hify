@@ -1,0 +1,216 @@
+/* ================================================================
+   Hify Global Theme — Light content + Dark sidebar surfaces
+   ================================================================ */
+
+html {
+  color-scheme: light;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hify-border-hover) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--hify-border-hover);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Shared page layout ── */
+.page {
+  padding: var(--hify-spacing-lg);
+  min-height: 100%;
+  background: var(--hify-bg-page);
+}
+
+.page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--hify-spacing-lg);
+  gap: var(--hify-spacing-base);
+  padding: 20px 24px;
+  background: var(--hify-bg-container);
+  border: 1px solid var(--hify-border-light);
+  border-radius: var(--hify-radius-xl);
+  box-shadow: var(--hify-shadow-sm);
+}
+
+.page__title-block h2 {
+  margin: 0 0 6px;
+  font-size: var(--hify-font-size-xxl);
+  font-weight: 700;
+  color: var(--hify-text-primary);
+  letter-spacing: -0.03em;
+}
+
+.page__desc {
+  margin: 0;
+  font-size: var(--hify-font-size-sm);
+  color: var(--hify-text-secondary);
+  line-height: 1.5;
+}
+
+.page__card {
+  background: var(--hify-bg-container);
+  border: 1px solid var(--hify-border-light);
+  border-radius: var(--hify-radius-xl);
+  padding: var(--hify-spacing-lg);
+  box-shadow: var(--hify-shadow-base);
+}
+
+/* ── Element Plus: Table (light) ── */
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--hify-bg-hover);
+  --el-table-row-hover-bg-color: var(--hify-bg-hover);
+  --el-table-border-color: var(--hify-border-light);
+  --el-table-text-color: var(--hify-text-regular);
+  --el-table-header-text-color: var(--hify-text-secondary);
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: #F8F9FC;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: none;
+}
+
+/* ── Element Plus: Form inputs ── */
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  background-color: var(--hify-bg-input) !important;
+  box-shadow: 0 0 0 1px var(--hify-border) inset !important;
+  transition: box-shadow var(--hify-transition-fast);
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--hify-border-hover) inset !important;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--hify-primary) inset, 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+
+.el-input__inner,
+.el-textarea__inner {
+  color: var(--hify-text-primary);
+}
+
+/* ── Element Plus: Buttons ── */
+.el-button--primary {
+  --el-button-bg-color: var(--hify-primary);
+  --el-button-border-color: var(--hify-primary);
+  --el-button-hover-bg-color: var(--hify-primary-dark);
+  --el-button-hover-border-color: var(--hify-primary-dark);
+  font-weight: 500;
+}
+
+/* ── Element Plus: Dialog ── */
+.el-dialog {
+  background: var(--hify-bg-elevated);
+  border: 1px solid var(--hify-border-light);
+  border-radius: var(--hify-radius-xl);
+  box-shadow: var(--hify-shadow-lg);
+}
+
+.el-dialog__header {
+  border-bottom: 1px solid var(--hify-border-light);
+  padding-bottom: 16px;
+}
+
+.el-dialog__title {
+  color: var(--hify-text-primary);
+  font-weight: 600;
+}
+
+/* ── Element Plus: Dropdown / Select popper ── */
+.el-select-dropdown,
+.el-dropdown-menu {
+  background: var(--hify-bg-elevated) !important;
+  border: 1px solid var(--hify-border-light) !important;
+  box-shadow: var(--hify-shadow-md) !important;
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover {
+  background: var(--hify-bg-hover) !important;
+}
+
+/* ── Element Plus: Pagination ── */
+.el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-button-bg-color: var(--hify-bg-container);
+  --el-pagination-hover-color: var(--hify-primary);
+}
+
+/* ── Element Plus: Tag ── */
+.el-tag.el-tag--info {
+  --el-tag-bg-color: var(--hify-bg-hover);
+  --el-tag-border-color: var(--hify-border);
+  --el-tag-text-color: var(--hify-text-secondary);
+}
+
+/* ── Element Plus: MessageBox ── */
+.el-message-box {
+  background: var(--hify-bg-elevated);
+  border: 1px solid var(--hify-border-light);
+  border-radius: var(--hify-radius-xl);
+  box-shadow: var(--hify-shadow-lg);
+}
+
+.el-message-box__title,
+.el-message-box__message {
+  color: var(--hify-text-primary);
+}
+
+.el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+/* ── Dark surface overrides (sidebar panels) ── */
+.surface-dark .el-input__wrapper,
+.surface-dark .el-textarea__inner,
+.surface-dark .el-select__wrapper {
+  background-color: var(--hify-bg-input) !important;
+  box-shadow: 0 0 0 1px var(--hify-border) inset !important;
+}
+
+.surface-dark .el-input__wrapper.is-focus,
+.surface-dark .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--hify-primary-light) inset !important;
+}
+
+.surface-dark .el-input__inner {
+  color: var(--hify-text-primary);
+}
+
+.surface-dark .el-button {
+  --el-button-bg-color: var(--hify-bg-hover);
+  --el-button-border-color: var(--hify-border);
+  --el-button-text-color: var(--hify-text-regular);
+  --el-button-hover-bg-color: var(--hify-bg-active);
+  --el-button-hover-border-color: var(--hify-border-hover);
+  --el-button-hover-text-color: var(--hify-text-primary);
+}
+
+.surface-dark .el-loading-mask {
+  background-color: rgba(18, 19, 24, 0.72);
+}

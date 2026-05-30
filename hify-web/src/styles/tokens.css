@@ -1,71 +1,61 @@
 /* ================================================================
-   Hify Design Tokens — Dark Tech
-   深色科技风 | 参考 Vercel / Linear / Railway
+   Hify Design Tokens — Dual Surface (Light Content + Dark Shell)
    ================================================================ */
 
 :root {
-  /* ═══════ 品牌色 ═══════ */
-  --hify-primary:          #7C6FF0;  /* 蓝紫主色 */
-  --hify-primary-light:    #A99FF8;  /* 浅 */
-  --hify-primary-dark:     #5E4FD8;  /* 深 */
-  --hify-accent:           #00E5D9;  /* 青色点缀 */
-  --hify-accent-light:     #5FF5EC;  /* 青浅 */
+  /* ═══════ 品牌色（全局共用）═══════ */
+  --hify-primary:          #6366F1;
+  --hify-primary-light:    #818CF8;
+  --hify-primary-dark:     #4F46E5;
+  --hify-accent:           #0EA5E9;
+  --hify-accent-light:     #38BDF8;
 
-  /* ═══════ 功能色 ═══════ */
-  --hify-success:  #34D399;
-  --hify-warning:  #FBBF24;
-  --hify-danger:   #F87171;
-  --hify-info:     #60A5FA;
+  --hify-success:  #10B981;
+  --hify-warning:  #F59E0B;
+  --hify-danger:   #EF4444;
+  --hify-info:     #3B82F6;
 
-  /* ═══════ 背景色阶 (深色) ═══════ */
-  --hify-bg-base:          #090A0F;  /* 最底 */
-  --hify-bg-page:          #0D0E14;  /* 页面背景 */
-  --hify-bg-sidebar:       #07080C;  /* 侧边栏（比页底更深） */
-  --hify-bg-container:     #13141C;  /* 卡片/表格 */
-  --hify-bg-elevated:      #1A1B24;  /* 浮层/弹窗 */
-  --hify-bg-hover:         #1E1F2A;  /* 悬停 */
-  --hify-bg-active:        #252637;  /* 选中/按下 */
-  --hify-bg-input:         #0F1018;  /* 输入框底 */
-  --hify-bg-tooltip:       #252531;  /* 提示底 */
+  /* ═══════ 浅色内容区（默认）═══════ */
+  --hify-bg-page:          #E8EBF2;
+  --hify-bg-container:     #FFFFFF;
+  --hify-bg-elevated:      #FFFFFF;
+  --hify-bg-hover:         #F3F5FA;
+  --hify-bg-active:        #E9ECF4;
+  --hify-bg-input:         #FFFFFF;
+  --hify-bg-sidebar:       #15161D;
+  --hify-bg-tooltip:       #1E1F28;
 
-  /* ═══════ 文字色阶 (深底浅字) ═══════ */
-  --hify-text-primary:     #EDEEF2;  /* 标题 */
-  --hify-text-regular:     #C2C3CE;  /* 正文 */
-  --hify-text-secondary:   #858694;  /* 辅助 */
-  --hify-text-placeholder: #555665;  /* 占位/禁用 */
-  --hify-text-inverse:     #EDEEF2;  /* 深底反白 */
+  --hify-text-primary:     #14151C;
+  --hify-text-regular:     #3A3B47;
+  --hify-text-secondary:   #6B6D7A;
+  --hify-text-placeholder: #A0A3B0;
+  --hify-text-inverse:     #FFFFFF;
 
-  /* ═══════ 边框 ═══════ */
-  --hify-border:           #1F2030;  /* 常规边线 */
-  --hify-border-light:     #282A38;  /* 浅边线 */
-  --hify-border-hover:     #3A3C4E;  /* 悬停边线 */
+  --hify-border:           #D8DCE6;
+  --hify-border-light:     #E8EBF2;
+  --hify-border-hover:     #B8BCC8;
 
-  /* ═══════ 圆角 ═══════ */
+  --hify-shadow-sm:    0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --hify-shadow-base:  0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --hify-shadow-md:    0 8px 24px rgba(15, 23, 42, 0.08);
+  --hify-shadow-lg:    0 16px 40px rgba(15, 23, 42, 0.12);
+  --hify-shadow-glow:  0 0 20px rgba(99, 102, 241, 0.22);
+
   --hify-radius-sm:    4px;
-  --hify-radius-base:  6px;
-  --hify-radius-lg:    10px;
+  --hify-radius-base:  8px;
+  --hify-radius-lg:    12px;
   --hify-radius-xl:    16px;
 
-  /* ═══════ 阴影 (深色发光感) ═══════ */
-  --hify-shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.40);
-  --hify-shadow-base:  0 1px 3px rgba(0, 0, 0, 0.50);
-  --hify-shadow-md:    0 4px 16px rgba(0, 0, 0, 0.50);
-  --hify-shadow-lg:    0 12px 40px rgba(0, 0, 0, 0.60);
-  --hify-shadow-glow:  0 0 20px rgba(124, 111, 240, 0.15);
-
-  /* ═══════ 过渡 ═══════ */
   --hify-transition-fast:   120ms cubic-bezier(0.4, 0, 0.2, 1);
   --hify-transition-base:   200ms cubic-bezier(0.4, 0, 0.2, 1);
   --hify-transition-slow:   300ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* ═══════ 间距 ═══════ */
   --hify-spacing-xs:   4px;
   --hify-spacing-sm:   8px;
   --hify-spacing-base: 16px;
   --hify-spacing-lg:   24px;
   --hify-spacing-xl:   32px;
 
-  /* ═══════ 字体 ═══════ */
   --hify-font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
                        "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --hify-font-size-xs:    12px;
@@ -74,13 +64,8 @@
   --hify-font-size-lg:    16px;
   --hify-font-size-xl:    20px;
   --hify-font-size-xxl:   24px;
-}
 
-/* ═══════════════════════════════════════════════════════════════
-   Element Plus 深色变量映射
-   ═══════════════════════════════════════════════════════════════ */
-:root {
-  /* 品牌色 */
+  /* Element Plus — 浅色内容区映射 */
   --el-color-primary:             var(--hify-primary);
   --el-color-primary-light-3:     var(--hify-primary-light);
   --el-color-primary-dark-2:      var(--hify-primary-dark);
@@ -89,7 +74,6 @@
   --el-color-danger:              var(--hify-danger);
   --el-color-info:                var(--hify-info);
 
-  /* 背景 */
   --el-bg-color:                  var(--hify-bg-container);
   --el-bg-color-page:             var(--hify-bg-page);
   --el-bg-color-overlay:          var(--hify-bg-elevated);
@@ -98,54 +82,46 @@
   --el-fill-color-light:          var(--hify-bg-hover);
   --el-fill-color-lighter:        var(--hify-bg-active);
 
-  /* 文字 */
   --el-text-color-primary:        var(--hify-text-primary);
   --el-text-color-regular:        var(--hify-text-regular);
   --el-text-color-secondary:      var(--hify-text-secondary);
   --el-text-color-placeholder:    var(--hify-text-placeholder);
 
-  /* 边框 */
   --el-border-color:              var(--hify-border);
   --el-border-color-light:        var(--hify-border-light);
   --el-border-color-lighter:      var(--hify-border-light);
   --el-border-color-dark:         var(--hify-border-hover);
 
-  /* 圆角 */
   --el-border-radius-base:        var(--hify-radius-base);
   --el-border-radius-round:       var(--hify-radius-lg);
-
-  /* 字体 */
   --el-font-family:               var(--hify-font-family);
+  --el-mask-color:                rgba(15, 23, 42, 0.45);
 }
 
-/* ================================================================
-   Hify Light Theme
-   通过 .hify-light 类名切换浅色配色
-   ================================================================ */
-.hify-light {
-  --hify-bg-base:          #FFFFFF;
-  --hify-bg-page:          #F6F7F9;
-  --hify-bg-sidebar:       #E9EBF0;
-  --hify-bg-container:     #FFFFFF;
-  --hify-bg-elevated:      #FFFFFF;
-  --hify-bg-hover:         #EDEFF3;
-  --hify-bg-active:        #E2E5EB;
-  --hify-bg-input:         #F2F3F7;
-  --hify-bg-tooltip:       #1A1C21;
+/* ═══════ 深色表面（侧栏 / 面板）═══════ */
+.surface-dark {
+  --hify-bg-page:          #121318;
+  --hify-bg-container:     #1A1B23;
+  --hify-bg-elevated:      #22232C;
+  --hify-bg-hover:         #252630;
+  --hify-bg-active:        #2E303C;
+  --hify-bg-input:         #1A1B23;
+  --hify-bg-sidebar:       #121318;
 
-  --hify-text-primary:     #16171C;
-  --hify-text-regular:     #3C3E46;
-  --hify-text-secondary:   #6E717B;
-  --hify-text-placeholder: #9CA0AB;
-  --hify-text-inverse:     #FFFFFF;
+  --hify-text-primary:     #F0F1F5;
+  --hify-text-regular:     #C4C6D0;
+  --hify-text-secondary:   #8E909E;
+  --hify-text-placeholder: #5C5E6A;
 
-  --hify-border:           #E2E5EB;
-  --hify-border-light:     #EEF0F4;
-  --hify-border-hover:     #CDD1D9;
+  --hify-border:           #2A2C38;
+  --hify-border-light:     #32343F;
+  --hify-border-hover:     #444652;
 
-  --hify-shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.04);
-  --hify-shadow-base:  0 1px 3px rgba(0, 0, 0, 0.06);
-  --hify-shadow-md:    0 4px 12px rgba(0, 0, 0, 0.05);
-  --hify-shadow-lg:    0 10px 32px rgba(0, 0, 0, 0.07);
-  --hify-shadow-glow:  0 0 20px rgba(124, 111, 240, 0.12);
+  --hify-shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.35);
+  --hify-shadow-base:  0 2px 8px rgba(0, 0, 0, 0.3);
+  --hify-shadow-md:    0 8px 24px rgba(0, 0, 0, 0.4);
+  --hify-shadow-lg:    0 16px 48px rgba(0, 0, 0, 0.5);
+  --hify-shadow-glow:  0 0 20px rgba(99, 102, 241, 0.25);
+
+  color-scheme: dark;
 }

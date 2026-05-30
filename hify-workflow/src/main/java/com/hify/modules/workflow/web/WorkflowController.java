@@ -5,6 +5,8 @@ import com.hify.common.web.Result;
 import com.hify.modules.workflow.api.WorkflowCreateRequest;
 import com.hify.modules.workflow.api.WorkflowListItemResponse;
 import com.hify.modules.workflow.api.WorkflowResponse;
+import com.hify.modules.workflow.api.WorkflowRunResponse;
+import com.hify.modules.workflow.api.WorkflowRunService;
 import com.hify.modules.workflow.api.WorkflowService;
 import com.hify.modules.workflow.api.WorkflowUpdateRequest;
 import jakarta.validation.Valid;
@@ -25,9 +27,12 @@ import java.util.List;
 public class WorkflowController {
 
     private final WorkflowService workflowService;
+    private final WorkflowRunService workflowRunService;
 
-    public WorkflowController(WorkflowService workflowService) {
+    public WorkflowController(WorkflowService workflowService,
+                              WorkflowRunService workflowRunService) {
         this.workflowService = workflowService;
+        this.workflowRunService = workflowRunService;
     }
 
     @PostMapping
@@ -36,10 +41,10 @@ public class WorkflowController {
     }
 
     @GetMapping
-    public Result<PageResult<List<WorkflowListItemResponse>>> list(
+    public PageResult<List<WorkflowListItemResponse>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        return Result.ok(workflowService.list(page, pageSize));
+        return workflowService.list(page, pageSize);
     }
 
     @GetMapping("/{id}")
@@ -57,5 +62,12 @@ public class WorkflowController {
     public Result<Void> delete(@PathVariable Long id) {
         workflowService.delete(id);
         return Result.ok(null);
+    }
+
+    /** 查询指定工作流最新一条执行记录（含节点详情） */
+    @GetMapping("/{id}/runs/latest")
+    public Result<WorkflowRunResponse> getLatestRun(@PathVariable Long id) {
+        WorkflowRunResponse run = workflowRunService.getLatestRun(id);
+        return Result.ok(run);
     }
 }

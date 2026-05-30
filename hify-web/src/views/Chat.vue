@@ -46,6 +46,13 @@
               <span>{{ formatTime(conv.updatedAt) }}</span>
             </div>
           </div>
+          <button
+            class="conv-delete"
+            title="删除对话"
+            @click.stop="handleDeleteConversation(conv)"
+          >
+            ×
+          </button>
         </div>
         <div v-if="conversations.length === 0" class="conv-empty">
           暂无对话记录
@@ -154,9 +161,9 @@ import { marked } from 'marked'
 import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.min.css'
-import 'github-markdown-css/github-markdown.css'
-import { listConversations, getMessages, sendMessageStream } from '@/api/chat'
+import { listConversations, getMessages, sendMessageStream, deleteConversation } from '@/api/chat'
 import { getAgentList } from '@/api/agent'
+import { useConfirm } from '@/components/useConfirm'
 import type { Conversation, ChatMessage } from '@/types/chat'
 import type { AgentResponse } from '@/types/agent'
 
@@ -192,6 +199,7 @@ const isLoading = ref(false)
 
 const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<any>(null)
+const { confirm } = useConfirm()
 
 // ── 初始化 ──
 onMounted(async () => {
@@ -238,6 +246,21 @@ async function switchConversation(convId: number) {
   }
   await nextTick()
   scrollToBottom()
+}
+
+function handleDeleteConversation(conv: Conversation) {
+  confirm(
+    { message: `确定删除对话「${conv.title || '新对话'}」吗？删除后不可恢复。` },
+    () => deleteConversation(conv.id),
+    async () => {
+      if (currentConversationId.value === conv.id) {
+        currentConversationId.value = null
+        messages.value = []
+        streamingContent.value = ''
+      }
+      await loadConversations()
+    },
+  )
 }
 
 // ── 发送消息 ──
@@ -351,15 +374,17 @@ function formatTime(iso: string): string {
 .chat-sidebar {
   width: 280px;
   min-width: 280px;
-  background: var(--hify-bg-sidebar);
-  border-right: 1px solid var(--hify-border);
+  background: #FFFFFF;
+  border-right: 1px solid var(--hify-border-light);
   display: flex;
   flex-direction: column;
+  box-shadow: 2px 0 12px rgba(15, 23, 42, 0.04);
 }
 
 .sidebar-top {
   padding: 20px 16px 16px;
-  border-bottom: 1px solid var(--hify-border);
+  border-bottom: 1px solid var(--hify-border-light);
+  background: #FAFBFD;
 }
 
 .sidebar-brand {
@@ -388,13 +413,14 @@ function formatTime(iso: string): string {
   font-weight: 500;
   border: 1px dashed var(--hify-border);
   color: var(--hify-text-secondary);
+  background: #FFFFFF;
   transition: all var(--hify-transition-fast);
 }
 
 .new-chat-btn:not(:disabled):hover {
   border-color: var(--hify-primary);
   color: var(--hify-primary);
-  background: rgba(124, 111, 240, 0.04);
+  background: #F5F3FF;
 }
 
 .plus {
@@ -407,6 +433,7 @@ function formatTime(iso: string): string {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
+  background: #FAFBFD;
 }
 
 .conv-item {
@@ -416,22 +443,65 @@ function formatTime(iso: string): string {
   padding: 12px;
   border-radius: 10px;
   cursor: pointer;
-  transition: background var(--hify-transition-fast);
-  margin-bottom: 2px;
+  transition: background var(--hify-transition-fast), box-shadow var(--hify-transition-fast);
+  margin-bottom: 4px;
+  border: 1px solid transparent;
 }
 
 .conv-item:hover {
-  background: var(--hify-bg-hover);
+  background: #FFFFFF;
+  border-color: var(--hify-border-light);
+  box-shadow: var(--hify-shadow-sm);
 }
 
 .conv-item.active {
-  background: var(--hify-primary);
+  background: linear-gradient(135deg, var(--hify-primary) 0%, var(--hify-primary-dark) 100%);
+  box-shadow: var(--hify-shadow-glow);
+  border-color: transparent;
 }
 
 .conv-item.active .conv-icon,
 .conv-item.active .conv-title,
 .conv-item.active .conv-meta {
   color: #fff;
+}
+
+.conv-item.active .conv-delete {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.conv-item.active .conv-delete:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.conv-delete {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--hify-text-placeholder);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--hify-transition-fast), background var(--hify-transition-fast), color var(--hify-transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-top: 2px;
+}
+
+.conv-item:hover .conv-delete {
+  opacity: 1;
+}
+
+.conv-delete:hover {
+  background: #FEE2E2;
+  color: var(--hify-danger);
 }
 
 .conv-icon {
@@ -478,7 +548,7 @@ function formatTime(iso: string): string {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--hify-bg-page);
+  background: #EEF0F5;
 }
 
 /* ── 消息滚动区 ── */
@@ -487,6 +557,8 @@ function formatTime(iso: string): string {
   overflow-y: auto;
   padding: 32px 0;
   scroll-behavior: smooth;
+  background:
+    linear-gradient(180deg, #F5F6FA 0%, #EEF0F5 100%);
 }
 
 /* 空状态 */
@@ -526,6 +598,11 @@ function formatTime(iso: string): string {
   width: 100%;
 }
 
+.msg-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: var(--hify-radius-lg);
+}
+
 .msg-row.user {
   flex-direction: row-reverse;
 }
@@ -551,8 +628,10 @@ function formatTime(iso: string): string {
 }
 
 .msg-avatar.assistant {
-  background: var(--hify-bg-active);
-  color: var(--hify-text-secondary);
+  background: #FFFFFF;
+  color: var(--hify-primary);
+  border: 1px solid var(--hify-border-light);
+  box-shadow: var(--hify-shadow-sm);
 }
 
 .msg-body {
@@ -581,25 +660,28 @@ function formatTime(iso: string): string {
 }
 
 .msg-bubble.user {
-  background: var(--hify-primary);
+  background: linear-gradient(135deg, var(--hify-primary) 0%, var(--hify-primary-dark) 100%);
   color: #fff;
   border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
 }
 
 .msg-bubble.assistant {
-  background: var(--hify-bg-container);
-  border: 1px solid var(--hify-border);
+  background: #FFFFFF;
+  border: 1px solid var(--hify-border-light);
   border-bottom-left-radius: 4px;
+  box-shadow: var(--hify-shadow-sm);
+  color: var(--hify-text-regular);
 }
 
 .msg-bubble.assistant.live {
-  border-color: var(--hify-primary);
-  box-shadow: 0 0 0 1px rgba(124, 111, 240, 0.15);
+  border-color: var(--hify-primary-light);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12), var(--hify-shadow-sm);
 }
 
 .msg-bubble.assistant.error {
   border-color: var(--hify-danger);
-  background: rgba(248, 113, 113, 0.04);
+  background: #FEF2F2;
 }
 
 .error-msg {
@@ -667,21 +749,66 @@ function formatTime(iso: string): string {
 
 /* ── Markdown ── */
 .markdown-body {
-  background: transparent !important;
   font-size: 14px;
   color: var(--hify-text-regular);
+  line-height: 1.65;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  color: var(--hify-text-primary);
+  margin: 16px 0 8px;
+  font-weight: 600;
+}
+
+.markdown-body :deep(h1) { font-size: 1.4em; }
+.markdown-body :deep(h2) { font-size: 1.25em; }
+.markdown-body :deep(h3) { font-size: 1.1em; }
+
+.markdown-body :deep(p) {
+  margin: 0 0 10px;
+}
+
+.markdown-body :deep(a) {
+  color: var(--hify-primary);
+  text-decoration: none;
+}
+
+.markdown-body :deep(a:hover) {
+  color: var(--hify-primary-dark);
+  text-decoration: underline;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 3px solid var(--hify-primary);
+  padding: 4px 12px;
+  margin: 8px 0;
+  color: var(--hify-text-secondary);
+  background: #F5F3FF;
+  border-radius: 0 6px 6px 0;
 }
 
 .markdown-body :deep(pre) {
-  background: var(--hify-bg-input);
+  background: #F6F8FA;
   border-radius: 8px;
   margin: 8px 0;
   border: 1px solid var(--hify-border-light);
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.markdown-body :deep(:not(pre) > code) {
+  background: #F0F1F8;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #C026D3;
 }
 
 .markdown-body :deep(code) {
   font-size: 13px;
-  background: transparent;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 
 .markdown-body :deep(p:last-child) {
@@ -691,10 +818,17 @@ function formatTime(iso: string): string {
 .markdown-body :deep(ol),
 .markdown-body :deep(ul) {
   padding-left: 1.5em;
+  margin: 8px 0;
+}
+
+.markdown-body :deep(li) {
+  margin: 4px 0;
 }
 
 .markdown-body :deep(table) {
   border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
 }
 
 .markdown-body :deep(th),
@@ -703,12 +837,25 @@ function formatTime(iso: string): string {
   padding: 6px 12px;
 }
 
+.markdown-body :deep(th) {
+  background: var(--hify-bg-hover);
+  color: var(--hify-text-primary);
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--hify-border);
+  margin: 16px 0;
+}
+
 /* ═══════════════════════════════════════════════
    底部输入区
    ═══════════════════════════════════════════════ */
 .input-area {
   padding: 16px 32px 20px;
-  background: var(--hify-bg-page);
+  background: #FFFFFF;
+  border-top: 1px solid var(--hify-border-light);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
 }
 
 .input-row {
@@ -720,20 +867,21 @@ function formatTime(iso: string): string {
 }
 
 .msg-input :deep(.el-textarea__inner) {
-  background: var(--hify-bg-container);
+  background: #F8F9FC;
   border: 1px solid var(--hify-border);
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.6;
   padding: 10px 16px;
   color: var(--hify-text-primary);
-  box-shadow: var(--hify-shadow-sm);
+  box-shadow: none;
   transition: border-color var(--hify-transition-fast), box-shadow var(--hify-transition-fast);
 }
 
 .msg-input :deep(.el-textarea__inner):focus {
   border-color: var(--hify-primary);
-  box-shadow: 0 0 0 3px rgba(124, 111, 240, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  background: #FFFFFF;
 }
 
 .msg-input :deep(.el-textarea__inner)::placeholder {

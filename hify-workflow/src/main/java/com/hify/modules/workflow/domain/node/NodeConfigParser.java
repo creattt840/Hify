@@ -1,6 +1,7 @@
 package com.hify.modules.workflow.domain.node;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hify.common.exception.BizException;
 import com.hify.common.exception.ErrorCode;
@@ -15,7 +16,8 @@ import java.util.Map;
  */
 public final class NodeConfigParser {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private NodeConfigParser() {
     }
@@ -45,8 +47,11 @@ public final class NodeConfigParser {
 
     private static NodeConfig createEmpty(String nodeType) {
         return switch (nodeType) {
-            case "START" -> new StartNodeConfig();
-            case "END"   -> new EndNodeConfig();
+            case "START"     -> new StartNodeConfig();
+            case "END"       -> new EndNodeConfig();
+            case "CONDITION", "API_CALL", "KNOWLEDGE" ->
+                    throw new BizException(ErrorCode.WORKFLOW_NODE_INVALID,
+                            "节点类型 " + nodeType + " 不允许空配置");
             default -> throw new BizException(ErrorCode.WORKFLOW_NODE_INVALID,
                     "节点类型 " + nodeType + " 不允许空配置");
         };

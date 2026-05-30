@@ -100,7 +100,12 @@ onMounted(() => {
 .hify-table :deep(.el-table) {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
-  --el-table-header-bg-color: var(--hify-bg-input);
+  --el-table-header-bg-color: #F3F5FA;
+  --el-table-row-hover-bg-color: #EEF0F8;
+}
+
+.hify-table :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: #F8F9FC;
 }
 
 .hify-table__pagination {

@@ -40,6 +40,7 @@ public class AgentServiceImpl implements AgentService {
         po.setModelConfigId(request.getModelConfigId());
         po.setTemperature(request.getTemperature() != null ? request.getTemperature() : 0.7);
         po.setIsEnabled(request.getIsEnabled());
+        po.setWorkflowId(request.getWorkflowId());
         agentMapper.insert(po);
         return enrichResponse(po);
     }
@@ -106,6 +107,7 @@ public class AgentServiceImpl implements AgentService {
         po.setModelConfigId(request.getModelConfigId());
         po.setTemperature(request.getTemperature() != null ? request.getTemperature() : 0.7);
         po.setIsEnabled(request.getIsEnabled());
+        po.setWorkflowId(request.getWorkflowId());
         agentMapper.updateById(po);
         return enrichResponse(po);
     }
@@ -170,6 +172,7 @@ public class AgentServiceImpl implements AgentService {
         r.setModelConfigId(po.getModelConfigId());
         r.setTemperature(po.getTemperature());
         r.setIsEnabled(po.getIsEnabled());
+        r.setWorkflowId(po.getWorkflowId());
         r.setCreatedAt(po.getCreatedAt());
         r.setUpdatedAt(po.getUpdatedAt());
     }

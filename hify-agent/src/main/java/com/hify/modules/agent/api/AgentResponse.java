@@ -19,6 +19,7 @@ public class AgentResponse {
     private String providerName;
     private String providerType;
     private Boolean isEnabled;
+    private Long workflowId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

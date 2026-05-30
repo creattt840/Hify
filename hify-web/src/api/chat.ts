@@ -1,4 +1,4 @@
-import { get } from '@/utils/request'
+import { get, del } from '@/utils/request'
 import type { Conversation, ChatMessage, ChatSendRequest } from '@/types/chat'
 
 const BASE = '/v1/conversations'
@@ -9,6 +9,10 @@ export function listConversations(): Promise<Conversation[]> {
 
 export function getMessages(conversationId: number): Promise<ChatMessage[]> {
   return get<ChatMessage[]>(`${BASE}/${conversationId}/messages`)
+}
+
+export function deleteConversation(conversationId: number): Promise<void> {
+  return del(`${BASE}/${conversationId}`)
 }
 
 /**

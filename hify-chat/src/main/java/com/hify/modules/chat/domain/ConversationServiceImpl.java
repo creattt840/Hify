@@ -21,6 +21,7 @@ import com.hify.modules.provider.api.ProviderAdapter;
 import com.hify.modules.provider.api.ProviderResponse;
 import com.hify.modules.provider.domain.ProviderAdapterFactory;
 import com.hify.modules.provider.infra.entity.ProviderType;
+import com.hify.modules.workflow.engine.WorkflowEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,7 @@ public class ConversationServiceImpl implements ConversationService {
     private final AgentService agentService;
     private final ModelService modelService;
     private final ProviderAdapterFactory adapterFactory;
+    private final WorkflowEngine workflowEngine;
     private final ObjectMapper objectMapper;
 
     @Lazy
@@ -88,6 +90,12 @@ public class ConversationServiceImpl implements ConversationService {
 
         // 3. 保存用户消息（独立事务）
         self.saveUserMessage(convId, content);
+
+        // 如果 Agent 绑定了工作流，走 WorkflowEngine 同步执行
+        if (agent.getWorkflowId() != null) {
+            log.info("Agent 绑定工作流，走 WorkflowEngine: agentId={}, workflowId={}", agentId, agent.getWorkflowId());
+            return runWorkflow(agent.getWorkflowId(), content, convId);
+        }
 
         // 4. 加载历史消息（最近 20 条，用于构造上下文）
         List<MessagePo> history = self.loadHistory(convId);
@@ -223,6 +231,52 @@ public class ConversationServiceImpl implements ConversationService {
         return result;
     }
 
+    // ─── 工作流执行 ───
+
+    /**
+     * 通过 WorkflowEngine 同步执行工作流，结果以 SSE 事件推送给前端。
+     * 和原有 LLM 流一样：创建 SseEmitter → 提交 llmStreamExecutor → 立即返回 emitter。
+     */
+    private SseEmitter runWorkflow(Long workflowId, String userInput, Long convId) {
+        SseEmitter emitter = new SseEmitter(180_000L);
+        emitter.onTimeout(() -> log.warn("Workflow SSE timeout, workflowId={}", workflowId));
+        emitter.onError(e -> log.error("Workflow SSE error, workflowId={}", workflowId, e));
+
+        llmStreamExecutor.execute(() -> {
+            try {
+                String result = workflowEngine.execute(workflowId, userInput);
+
+                // 保存 AI 回复
+                self.saveAssistantMessage(convId, result, 0, 0);
+
+                safeSend(emitter, "done", Map.of("convId", convId));
+                emitter.complete();
+                log.info("工作流执行完成: workflowId={}, convId={}", workflowId, convId);
+
+            } catch (BizException e) {
+                log.error("工作流执行失败: workflowId={}", workflowId, e);
+                safeSend(emitter, "error", e.getMessage());
+                emitter.complete();  // 不能让 emitter 处于未完成状态
+
+            } catch (Exception e) {
+                log.error("工作流执行异常: workflowId={}", workflowId, e);
+                safeSend(emitter, "error", "工作流执行失败: " + e.getMessage());
+                emitter.complete();
+            }
+        });
+
+        return emitter;
+    }
+
+    /** 安全推送 SSE 事件，忽略客户端断开的 IOException */
+    private void safeSend(SseEmitter emitter, String event, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(event).data(data));
+        } catch (IOException e) {
+            log.debug("SSE send failed, client may have disconnected");
+        }
+    }
+
     @Override
     public List<ConversationPo> listConversations() {
         return conversationMapper.selectList(
@@ -236,5 +290,18 @@ public class ConversationServiceImpl implements ConversationService {
                 .eq(MessagePo::getConversationId, conversationId)
                 .orderByAsc(MessagePo::getCreatedAt);
         return messageMapper.selectList(wrapper);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteConversation(Long id) {
+        ConversationPo po = conversationMapper.selectById(id);
+        if (po == null) {
+            throw new BizException(ErrorCode.CONVERSATION_NOT_FOUND);
+        }
+        messageMapper.delete(
+                new LambdaQueryWrapper<MessagePo>().eq(MessagePo::getConversationId, id));
+        conversationMapper.deleteById(id);
+        log.info("对话已删除: id={}, title={}", id, po.getTitle());
     }
 }

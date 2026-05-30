@@ -16,4 +16,7 @@ public interface ConversationService {
 
     /** 获取会话消息列表（时间升序） */
     List<MessagePo> getMessages(Long conversationId);
+
+    /** 删除会话及其消息（逻辑删除） */
+    void deleteConversation(Long id);
 }

@@ -15,9 +15,11 @@
 ## 功能概览
 
 - **模型管理**：配置 OpenAI / Anthropic / Gemini / Ollama 及 OpenAI 兼容服务，支持连通性测试与模型 ID 配置
-- **Agent 管理**：系统提示词、温度、绑定已启用提供商下的模型
-- **对话**：SSE 流式输出、多轮会话、Markdown 渲染
+- **Agent 管理**：系统提示词、温度、绑定模型，可选绑定工作流（对话时自动走工作流引擎）
+- **对话**：SSE 流式输出、多轮会话、Markdown 渲染、删除会话
 - **知识库 RAG**：知识库 CRUD、文档上传（txt/md/pdf）、异步分块、向量化写入 pgvector、分块查询与删除
+- **工作流**：JSON 配置创建/编辑/删除，支持 START / LLM / CONDITION / KNOWLEDGE / API_CALL / END 节点，Agent 绑定后通过对话触发执行
+- **管理控制台**：深浅交替 UI（深色导航侧栏 + 浅色内容区），对话页支持会话列表管理
 
 ## 开发进度
 
@@ -25,10 +27,10 @@
 |------|:----:|------|
 | hify-common | ✅ | BaseEntity、Result/PageResult、BizException、MyBatis-Plus 配置 |
 | hify-provider | ✅ | CRUD、连通性测试、健康状态、模型配置、Embedding API |
-| hify-agent | ✅ | CRUD、temperature、跨模块模型绑定 |
-| hify-chat | ✅ | SSE 流式、四种 LLM 适配器、会话/消息存储 |
+| hify-agent | ✅ | CRUD、temperature、模型绑定、工作流绑定 |
+| hify-chat | ✅ | SSE 流式、四种 LLM 适配器、会话/消息存储、删除会话、工作流对话路由 |
 | hify-knowledge | ✅ | 知识库/文档 CRUD、分块管线、MySQL + PostgreSQL 双数据源 |
-| hify-workflow | ⏳ | 简版工作流（JSON 配置） |
+| hify-workflow | ✅ | JSON 工作流 CRUD、WorkflowEngine 执行、节点运行记录 |
 | hify-mcp | ⏳ | MCP 工具接入 |
 
 ## 快速启动
@@ -67,6 +69,15 @@ mvn spring-boot:run
 
 服务默认监听 **http://localhost:8080**。启动日志中应出现 `HifyMySQLPool` 与 `HifyPgPool` 两个连接池。
 
+> **重启注意**：若报 `Port 8080 was already in use`，需先结束旧 Java 进程再启动，否则新代码（如新 API）不会生效。
+>
+> ```powershell
+> netstat -ano | findstr :8080          # 查看占用 PID
+> Stop-Process -Id <PID> -Force         # 结束旧进程
+> mvn install -DskipTests               # 编译各模块
+> cd hify-boot && mvn spring-boot:run   # 启动
+> ```
+
 ### 4. 启动前端
 
 ```bash
@@ -87,7 +98,28 @@ curl "http://localhost:8080/api/v1/providers?page=1&pageSize=5"
 curl "http://localhost:8080/api/v1/knowledge-bases?page=1&pageSize=5"
 ```
 
-浏览器访问 http://localhost:5173 ，在「模型管理」配置提供商，在「知识库」创建知识库并上传文档。
+浏览器访问 http://localhost:5173 ，在「模型管理」配置提供商，在「Agent 管理」创建 Agent，在「对话」开始聊天；可在「工作流」创建 JSON 工作流并绑定到 Agent。
+
+## 工作流说明
+
+### 节点类型
+
+| 类型 | 说明 |
+|------|------|
+| START | 入口，接收用户输入 |
+| LLM | 调用绑定的 LLM 模型 |
+| CONDITION | 条件分支 |
+| KNOWLEDGE | 知识库检索（RAG） |
+| API_CALL | 调用外部 HTTP 接口 |
+| END | 结束并输出结果 |
+
+### 触发方式
+
+1. 在「工作流」页面创建并保存工作流（JSON 配置）
+2. 在「Agent 管理」编辑 Agent，绑定 `workflowId`
+3. 在「对话」页选择该 Agent 发送消息 → 自动走 `WorkflowEngine` 同步执行，结果经 SSE 返回
+
+执行记录可通过 `GET /api/v1/workflows/{id}/runs/latest` 查询。
 
 ## 模型提供商配置说明
 
@@ -156,7 +188,7 @@ curl "http://localhost:8080/api/v1/knowledge-bases?page=1&pageSize=5"
 | hify-agent | Agent 配置 |
 | hify-chat | 对话引擎 |
 | hify-knowledge | 知识库 RAG |
-| hify-workflow | 工作流（规划中） |
+| hify-workflow | 工作流 CRUD 与执行引擎 |
 | hify-mcp | MCP 工具（规划中） |
 | hify-boot | 启动入口、双数据源装配 |
 | hify-web | 管理控制台前端 |
@@ -192,7 +224,19 @@ DELETE /api/v1/agents/{id}
 ```
 GET    /api/v1/conversations
 GET    /api/v1/conversations/{id}/messages
-POST   /api/v1/conversations/stream              # SSE 流式
+DELETE /api/v1/conversations/{id}                # 删除会话及消息（逻辑删除）
+POST   /api/v1/conversations/stream              # SSE 流式，body 字段为 content
+```
+
+### Workflow 工作流
+
+```
+GET    /api/v1/workflows
+POST   /api/v1/workflows
+GET    /api/v1/workflows/{id}
+PUT    /api/v1/workflows/{id}
+DELETE /api/v1/workflows/{id}
+GET    /api/v1/workflows/{id}/runs/latest        # 最新执行记录
 ```
 
 ### Knowledge 知识库
@@ -219,4 +263,7 @@ DELETE /api/v1/documents/{id}
 | 现象 | 处理 |
 |------|------|
 | 删除知识库报「服务器内部错误」 | 确认后端已重启，日志中有 `HifyPgPool`；旧进程未加载双数据源修复 |
+| 删除对话报「服务器内部错误」 | 8080 被旧进程占用，新后端未启动；结束旧进程后 `mvn install` 再重启 |
+| 重启报 Port 8080 already in use | 用 `netstat -ano \| findstr :8080` 找到 PID，`Stop-Process -Id <PID> -Force` |
+| 知识库文档一直 FAILED | DeepSeek 不支持 Embedding；需单独配置 OpenAI 兼容 Embedding 提供商 |
 

@@ -8,6 +8,7 @@ import com.hify.modules.chat.infra.entity.MessagePo;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,6 +34,12 @@ public class ConversationController {
     @GetMapping("/{id}/messages")
     public Result<List<MessagePo>> messages(@PathVariable Long id) {
         return Result.ok(conversationService.getMessages(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        conversationService.deleteConversation(id);
+        return Result.ok();
     }
 
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

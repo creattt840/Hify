@@ -32,6 +32,16 @@ const router = createRouter({
       name: 'documents',
       component: () => import('../views/Documents.vue'),
     },
+    {
+      path: '/workflows',
+      name: 'workflows',
+      component: () => import('../views/Workflows.vue'),
+    },
+    {
+      path: '/workflows/create',
+      name: 'workflowCreate',
+      component: () => import('../views/WorkflowCreate.vue'),
+    },
   ],
 })
 

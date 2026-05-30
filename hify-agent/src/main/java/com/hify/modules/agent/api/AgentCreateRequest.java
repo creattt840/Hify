@@ -26,4 +26,7 @@ public class AgentCreateRequest {
 
     @NotNull(message = "启用状态不能为空")
     private Boolean isEnabled;
+
+    /** 绑定的工作流 ID，null 表示不绑定 */
+    private Long workflowId;
 }

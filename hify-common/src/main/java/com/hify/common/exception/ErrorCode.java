@@ -39,6 +39,7 @@ public enum ErrorCode {
     WORKFLOW_NODE_INVALID(6004, "工作流节点配置无效"),
     WORKFLOW_CYCLE_DETECTED(6005, "工作流存在循环引用"),
     WORKFLOW_START_NODE_REQUIRED(6006, "工作流必须包含 START 节点"),
+    UNSUPPORTED_NODE_TYPE(6007, "不支持的节点类型"),
 
     // Knowledge 7000-7999
     KNOWLEDGE_NOT_FOUND(7000, "知识库不存在"),
