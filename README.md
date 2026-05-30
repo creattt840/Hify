@@ -2,8 +2,6 @@
 
 简版 AI Agent 开发平台，本地部署，面向 20–50 人团队内部使用。
 
-仓库地址：[https://github.com/creattt840/Hify](https://github.com/creattt840/Hify)
-
 ## 技术栈
 
 | 层级 | 技术 |
@@ -71,15 +69,6 @@ mvn spring-boot:run
 ```
 
 服务默认监听 **http://localhost:8080**（内置 Mock 天气 MCP 服务监听 **8082**）。启动日志中应出现 `HifyMySQLPool` 与 `HifyPgPool` 两个连接池。
-
-> **重启注意**：若报 `Port 8080 was already in use`，需先结束旧 Java 进程再启动，否则新代码（如新 API）不会生效。
->
-> ```powershell
-> netstat -ano | findstr :8080          # 查看占用 PID
-> Stop-Process -Id <PID> -Force         # 结束旧进程
-> mvn install -DskipTests               # 编译各模块
-> cd hify-boot; mvn spring-boot:run     # 启动
-> ```
 
 ### 4. 启动前端
 
@@ -315,9 +304,6 @@ DELETE /api/v1/documents/{id}
 | 现象 | 处理 |
 |------|------|
 | 删除知识库报「服务器内部错误」 | 确认后端已重启，日志中有 `HifyPgPool`；旧进程未加载双数据源修复 |
-| 删除对话报「服务器内部错误」 | 8080 被旧进程占用，新后端未启动；结束旧进程后 `mvn install` 再重启 |
-| 重启报 Port 8080 already in use | 用 `netstat -ano \| findstr :8080` 找到 PID，`Stop-Process -Id <PID> -Force` |
 | 知识库文档一直 FAILED | DeepSeek 不支持 Embedding；需单独配置 OpenAI 兼容 Embedding 提供商 |
 | Agent 对话不调用 MCP 工具 | 确认 Agent 已绑定工具且 Server 启用；查看后端日志是否加载工具列表 |
-| MCP Server 连接失败 | 检查 URL 格式；SSE 类型 URL 需以 `/sse` 结尾；百度地图等需有效 AK |
 | 工作流对话无流式输出 | 工作流路径同步执行，完成后推送 `done` 事件，前端自动刷新消息列表 |
